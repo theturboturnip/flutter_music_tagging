@@ -1,36 +1,26 @@
 import 'package:floor/floor.dart';
 
 @dao
-class SongDao {
-
-}
+class SongDao {}
 
 // Album
 @dao
-class AlbumDao {
-
-}
+class AlbumDao {}
 
 // Artist
 @dao
-class ArtistDao {
-
-}
+class ArtistDao {}
 
 // Playlist
 @dao
-class PlaylistDao {
-
-}
+class PlaylistDao {}
 
 // Folder
 @dao
-class FolderDao {
-
-}
+class FolderDao {}
 
 // Tag
 @dao
 class TagDao {
-    // TODO - functions for songs/albums/playlists/folders directly tagged, then functions for indirect tags?
+  // TODO - functions for songs/albums/playlists/folders directly tagged, then functions for indirect tags?
 }

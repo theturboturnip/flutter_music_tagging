@@ -1,6 +1,8 @@
 import 'package:floor/floor.dart';
 import 'package:flutter_music_tagging/database/backend_id.dart';
 
+// TODO - Change to use backendId as primary key where applicable
+
 @Entity(
   foreignKeys: [
     ForeignKey(
@@ -25,7 +27,8 @@ class Song {
   // Used to create from SQL-version
   Song(this.id, this.backendId, this.title, this.lengthMs, this.albumId);
   // Used to create from Dart/Flutter side
-  Song.fromNew(this.backendId, this.title, this.lengthMs, this.albumId) : this.id = 0;
+  Song.fromNew(this.backendId, this.title, this.lengthMs, this.albumId)
+      : this.id = 0;
 }
 
 @Entity(
@@ -51,24 +54,25 @@ class Album {
 
   Album(this.id, this.backendId, this.title, this.trackCount, this.artistId);
   // Used to create from Dart/Flutter side
-  Album.fromNew(this.backendId, this.title, this.trackCount, this.artistId) : this.id = 0;
+  Album.fromNew(this.backendId, this.title, this.trackCount, this.artistId)
+      : this.id = 0;
 }
 
-@Entity(
-  foreignKeys: [
-    ForeignKey(
-      childColumns: ['album_id'],
-      parentColumns: ['id'],
-      entity: Album,
-    ),
-    ForeignKey(
-      childColumns: ['song_id'],
-      parentColumns: ['id'],
-      entity: Song,
-    )
-  ],
-  primaryKeys: ["album_id", "song_id"]
-)
+@Entity(foreignKeys: [
+  ForeignKey(
+    childColumns: ['album_id'],
+    parentColumns: ['id'],
+    entity: Album,
+  ),
+  ForeignKey(
+    childColumns: ['song_id'],
+    parentColumns: ['id'],
+    entity: Song,
+  )
+], primaryKeys: [
+  "album_id",
+  "song_id"
+])
 class AlbumEntry {
   @ColumnInfo(name: "album_id")
   final int albumId;
@@ -111,22 +115,24 @@ class Playlist {
   Playlist.fromNew(this.backendId, this.name, this.trackCount) : this.id = 0;
 }
 
-@Entity(
-  foreignKeys: [
-    ForeignKey(
-      childColumns: ['playlist_id'],
-      parentColumns: ['id'],
-      entity: Playlist,
-    ),
-    ForeignKey(
-      childColumns: ['song_id'],
-      parentColumns: ['id'],
-      entity: Song,
-    )
-  ],
-  // Songs can repeat in a playlist, so just (playlist, song) isn't unique
-  primaryKeys: ["playlist_id", "song_id", "index"]
-)
+@Entity(foreignKeys: [
+  ForeignKey(
+    childColumns: ['playlist_id'],
+    parentColumns: ['id'],
+    entity: Playlist,
+  ),
+  ForeignKey(
+    childColumns: ['song_id'],
+    parentColumns: ['id'],
+    entity: Song,
+  )
+],
+    // Songs can repeat in a playlist, so just (playlist, song) isn't unique
+    primaryKeys: [
+      "playlist_id",
+      "song_id",
+      "index"
+    ])
 class PlaylistEntry {
   @ColumnInfo(name: "playlist_id")
   final int playlistId;
@@ -149,26 +155,28 @@ class Folder {
   // Used to create from Dart/Flutter side
   Folder.fromNew(this.name) : this.id = 0;
 }
-@Entity(
-  foreignKeys: [
-    ForeignKey(
-      childColumns: ['parent_folder_id'],
-      parentColumns: ['id'],
-      entity: Folder,
-    ),
-    ForeignKey(
-      childColumns: ['child_folder_id'],
-      parentColumns: ['id'],
-      entity: Folder,
-    ),
-    ForeignKey(
-      childColumns: ['child_album_id'],
-      parentColumns: ['id'],
-      entity: Album,
-    )
-  ],
-  primaryKeys: ["parent_folder_id", "child_folder_id", "child_album_id"]
-)
+
+@Entity(foreignKeys: [
+  ForeignKey(
+    childColumns: ['parent_folder_id'],
+    parentColumns: ['id'],
+    entity: Folder,
+  ),
+  ForeignKey(
+    childColumns: ['child_folder_id'],
+    parentColumns: ['id'],
+    entity: Folder,
+  ),
+  ForeignKey(
+    childColumns: ['child_album_id'],
+    parentColumns: ['id'],
+    entity: Album,
+  )
+], primaryKeys: [
+  "parent_folder_id",
+  "child_folder_id",
+  "child_album_id"
+])
 class FolderChild {
   @ColumnInfo(name: "parent_folder_id")
   final int parentFolderId;
@@ -180,8 +188,8 @@ class FolderChild {
 
   final int order;
 
-
-  FolderChild(this.parentFolderId, this.childFolderId, this.childAlbumId, this.order);
+  FolderChild(
+      this.parentFolderId, this.childFolderId, this.childAlbumId, this.order);
 }
 
 @entity
@@ -195,36 +203,40 @@ class Tag {
   // Used to create from Dart/Flutter side
   Tag.fromNew(this.name) : this.id = 0;
 }
-@Entity(
-  foreignKeys: [
-    ForeignKey(
-      childColumns: ['parent_tag_id'],
-      parentColumns: ['id'],
-      entity: Tag,
-    ),
-    ForeignKey(
-      childColumns: ['child_folder_id'],
-      parentColumns: ['id'],
-      entity: Folder,
-    ),
-    ForeignKey(
-      childColumns: ['child_album_id'],
-      parentColumns: ['id'],
-      entity: Album,
-    ),
-    ForeignKey(
-      childColumns: ['child_playlist_id'],
-      parentColumns: ['id'],
-      entity: Playlist,
-    ),
-    ForeignKey(
-      childColumns: ['child_song_id'],
-      parentColumns: ['id'],
-      entity: Song,
-    ),
-  ],
-  primaryKeys: ["parent_folder_id", "child_folder_id", "child_album_id", "child_playlist_id", "child_song_id"]
-)
+
+@Entity(foreignKeys: [
+  ForeignKey(
+    childColumns: ['parent_tag_id'],
+    parentColumns: ['id'],
+    entity: Tag,
+  ),
+  ForeignKey(
+    childColumns: ['child_folder_id'],
+    parentColumns: ['id'],
+    entity: Folder,
+  ),
+  ForeignKey(
+    childColumns: ['child_album_id'],
+    parentColumns: ['id'],
+    entity: Album,
+  ),
+  ForeignKey(
+    childColumns: ['child_playlist_id'],
+    parentColumns: ['id'],
+    entity: Playlist,
+  ),
+  ForeignKey(
+    childColumns: ['child_song_id'],
+    parentColumns: ['id'],
+    entity: Song,
+  ),
+], primaryKeys: [
+  "parent_folder_id",
+  "child_folder_id",
+  "child_album_id",
+  "child_playlist_id",
+  "child_song_id"
+])
 class TagChild {
   @ColumnInfo(name: "parent_tag_id")
   final int parentTagId;
@@ -238,6 +250,6 @@ class TagChild {
   @ColumnInfo(name: "child_song_id")
   final int? childSongId;
 
-  TagChild(this.parentTagId, this.childFolderId, this.childAlbumId, this.childPlaylistId, this.childSongId);
+  TagChild(this.parentTagId, this.childFolderId, this.childAlbumId,
+      this.childPlaylistId, this.childSongId);
 }
-
