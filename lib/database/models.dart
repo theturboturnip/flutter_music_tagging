@@ -1,4 +1,5 @@
 import 'package:floor/floor.dart';
+import 'package:meta/meta.dart';
 import 'package:flutter_music_tagging/database/backend_id.dart';
 
 // TODO - Change to use backendId as primary key where applicable
@@ -70,8 +71,9 @@ class Album {
     entity: Song,
   )
 ], primaryKeys: [
+  // Can only have one element linked to index X of album_id
   "album_id",
-  "song_id"
+  "index"
 ])
 class AlbumEntry {
   @ColumnInfo(name: "album_id")
@@ -126,13 +128,11 @@ class Playlist {
     parentColumns: ['id'],
     entity: Song,
   )
-],
-    // Songs can repeat in a playlist, so just (playlist, song) isn't unique
-    primaryKeys: [
-      "playlist_id",
-      "song_id",
-      "index"
-    ])
+], primaryKeys: [
+  // Can only have one element linked to index X of playlist_id
+  "playlist_id",
+  "index"
+])
 class PlaylistEntry {
   @ColumnInfo(name: "playlist_id")
   final int playlistId;
@@ -173,9 +173,9 @@ class Folder {
     entity: Album,
   )
 ], primaryKeys: [
+  // Can only have one element linked to index X of parent_folder_id
   "parent_folder_id",
-  "child_folder_id",
-  "child_album_id"
+  "index"
 ])
 class FolderChild {
   @ColumnInfo(name: "parent_folder_id")
@@ -186,10 +186,17 @@ class FolderChild {
   @ColumnInfo(name: "child_album_id")
   final int? childAlbumId;
 
-  final int order;
+  final int index;
 
   FolderChild(
-      this.parentFolderId, this.childFolderId, this.childAlbumId, this.order);
+      this.parentFolderId, this.childFolderId, this.childAlbumId, this.index);
+
+  FolderChild.folder(this.parentFolderId, Folder folder, this.index)
+      : this.childFolderId = folder.id,
+        this.childAlbumId = null;
+  FolderChild.album(this.parentFolderId, Album album, this.index)
+      : this.childFolderId = null,
+        this.childAlbumId = album.id;
 }
 
 @entity
@@ -252,4 +259,21 @@ class TagChild {
 
   TagChild(this.parentTagId, this.childFolderId, this.childAlbumId,
       this.childPlaylistId, this.childSongId);
+
+  // Private constructor,
+  // Inits child fields to null, takes a typesafe Tag
+  TagChild._base(Tag tag,
+      {this.childAlbumId,
+      this.childFolderId,
+      this.childPlaylistId,
+      this.childSongId})
+      : parentTagId = tag.id;
+  // Type-safe constructors for each type
+  TagChild.folder(Tag tag, Folder folder)
+      : this._base(tag, childFolderId: folder.id);
+  TagChild.album(Tag tag, Album album)
+      : this._base(tag, childAlbumId: album.id);
+  TagChild.playlist(Tag tag, Playlist playlist)
+      : this._base(tag, childPlaylistId: playlist.id);
+  TagChild.song(Tag tag, Song song) : this._base(tag, childSongId: song.id);
 }
