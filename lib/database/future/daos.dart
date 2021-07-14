@@ -5,6 +5,8 @@ import 'models.dart';
 import '../models.dart';
 import '../daos.dart';
 
+/*
+
 // Playlist
 @dao
 abstract class PlaylistDao
@@ -46,3 +48,5 @@ abstract class TagDao {
   // TODO - find queries
   // TODO - functions for songs/albums/playlists/folders directly tagged, then functions for indirect tags?
 }
+
+*/

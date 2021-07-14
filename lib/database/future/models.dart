@@ -3,6 +3,8 @@ import 'package:flutter_music_tagging/database/backend_id.dart';
 
 import '../models.dart';
 
+/*
+
 @entity
 class Playlist {
   @PrimaryKey(autoGenerate: true)
@@ -178,3 +180,5 @@ class TagChild {
       : this._base(tag, childPlaylistId: playlist.id);
   TagChild.song(Tag tag, Song song) : this._base(tag, childSongId: song.id);
 }
+
+*/
