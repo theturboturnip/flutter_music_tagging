@@ -8,7 +8,7 @@ import 'package:flutter_music_tagging/ext.dart';
 // automatically generate correct insert/update/delete
 abstract class BaseMutableDao<T> {
   @insert
-  Future<List<T>> insertValues(List<T> values);
+  Future<List<int>> insertValues(List<T> values);
 
   // Returns number of updated values
   @update
@@ -18,15 +18,15 @@ abstract class BaseMutableDao<T> {
   Future<void> deleteValues(List<T> values);
 }
 
-abstract class BaseMutableBackendedDao<T, TBackendElem extends BackendRow<T>> {
+abstract class BaseMutableBackendedDao<T, TBackendElem> {
   TBackendElem generateRow(T item, BackendId id);
 
   @insert
-  Future<void> _insertBackendElems(List<TBackendElem>);
+  Future<void> _insertBackendElems(List<TBackendElem> values);
 
   @transaction
   Future<void> insertBackendMappings(T item, List<BackendId> items) {
-    return _insertBackendElems(items.map((e) => generateRow(item, e)));
+    return _insertBackendElems(items.map((e) => generateRow(item, e)).toList());
   }
 
   // TODO - need update-y functions, delete-y functions
@@ -38,34 +38,36 @@ abstract class BaseMutableBackendedDao<T, TBackendElem extends BackendRow<T>> {
 // e.g. T = Album, TReferenced = Song, TEntry = AlbumEntry
 // will generate insertGroup(Album, List<Song>) that automatically
 // creates correct AlbumEntry rows.
-abstract class BaseOrderedGroupDao<T, TEntry, TReferenced> {
-  TEntry generateEntry(T base, int index, TReferenced referenced);
-  Future<void> deleteGroupEntries(T base);
+// abstract class BaseOrderedGroupDao<T, TEntry, TReferenced> {
+//   TEntry generateEntry(int baseId, int index, TReferenced referenced);
+//   Future<void> deleteGroupEntries(T base);
 
-  @insert
-  Future<T> _insertBase(T base);
-  @insert
-  Future<List<TEntry>> _insertEntries(List<TEntry> entries);
+//   @insert
+//   Future<int> _insertBase(T base);
+//   @insert
+//   Future<List<int>> _insertEntries(List<TEntry> entries);
 
-  @transaction
-  Future<T> insertGroup(T base_noIndex, List<TReferenced> referenced) async {
-    T base = await _insertBase(base_noIndex);
-    await _insertEntries(
-        referenced.mapIndexed((r, i) => generateEntry(base, i, r)).toList());
+//   @transaction
+//   Future<int> insertGroup(T base_noId, List<TReferenced> referenced) async {
+//     int baseId = await _insertBase(base_noId);
+//     await _insertEntries(
+//         referenced.mapIndexed((r, i) => generateEntry(baseId, i, r)).toList());
 
-    return base;
-  }
+//     return baseId;
+//   }
 
-  @transaction
-  Future<void> updateGroup(T base, List<TReferenced> referenced) async {
-    await deleteGroupEntries(base);
-    await _insertEntries(
-        referenced.mapIndexed((r, i) => generateEntry(base, i, r)).toList());
-  }
-}
+//   @transaction
+//   Future<void> updateGroup(
+//       T base, int baseId, List<TReferenced> referenced) async {
+//     await deleteGroupEntries(base);
+//     await _insertEntries(
+//         referenced.mapIndexed((r, i) => generateEntry(baseId, i, r)).toList());
+//   }
+// }
 
 @dao
-abstract class SongDao extends BaseMutableDao<Song> with BaseMutableBackendedDao<Song, Song_BackendRow> {
+abstract class SongDao extends BaseMutableDao<Song>
+    with BaseMutableBackendedDao<Song, Song_BackendRow> {
   Song_BackendRow generateRow(Song item, BackendId id) {
     return Song_BackendRow(item.id, id);
   }
@@ -74,6 +76,8 @@ abstract class SongDao extends BaseMutableDao<Song> with BaseMutableBackendedDao
 
   @Query("SELECT * FROM Song where instr(title, :keyword) > 0")
   Future<List<Song>> getSongsByKeyword(String keyword);
+  @Query("SELECT * FROM Song where instr(title, :keyword) > 0")
+  Stream<List<Song>> listenForSongsByKeyword(String keyword);
 
   @Query("SELECT * FROM Song ORDER BY title")
   Stream<List<Song>> listenForAllSongs();
@@ -81,42 +85,63 @@ abstract class SongDao extends BaseMutableDao<Song> with BaseMutableBackendedDao
 
 // Album
 @dao
-abstract class AlbumDao extends BaseOrderedGroupDao<Album, AlbumEntry, Song> with BaseMutableBackendedDao<Album, Album_BackendRow> {
+abstract class AlbumDao
+    extends BaseMutableBackendedDao<Album, Album_BackendRow> {
   Album_BackendRow generateRow(Album item, BackendId id) {
     return Album_BackendRow(item.id, id);
   }
-  
+
   @Query("SELECT * FROM Album where albumId = :id")
-  Future<Album> getAlbum(int id);
+  Future<Album?> getAlbum(int id);
 
   @Query("SELECT * FROM Song "
       "INNER JOIN AlbumEntries ON AlbumEntries.song_id = Song.id "
-      "WHERE AlbumEntries.album_id = :album.id "
+      "WHERE AlbumEntries.album_id = :albumId "
       "ORDER BY AlbumEntries.index")
-  Future<List<Song>> getAlbumSongs(Album album);
+  Future<List<Song>> getAlbumSongs(int albumId);
 
   @Query("SELECT * FROM Song "
       "INNER JOIN AlbumEntries ON AlbumEntries.song_id = Song.id "
-      "WHERE AlbumEntries.album_id = :album.id "
+      "WHERE AlbumEntries.album_id = :albumId "
       "ORDER BY AlbumEntries.index")
-  Stream<List<Song>> listenForAlbumSongs(Album album);
+  Stream<List<Song>> listenForAlbumSongs(int albumId);
 
   @Query("SELECT * FROM Song ORDER BY title")
   Stream<List<Song>> listenForAllAlbums();
 
-  @override
-  AlbumEntry generateEntry(Album base, int index, Song referenced) {
-    return AlbumEntry(base.id, referenced.id, index);
+  @insert
+  Future<int> _insertBase(Album base);
+  @insert
+  Future<List<int>> _insertEntries(List<AlbumEntry> entries);
+
+  @transaction
+  Future<int> insertGroup(Album base_noId, List<Song> referenced) async {
+    int baseId = await _insertBase(base_noId);
+    await _insertEntries(
+        referenced.mapIndexed((r, i) => generateEntry(baseId, i, r)).toList());
+
+    return baseId;
   }
 
-  @override
-  @Query("DELETE * FROM AlbumEntry where albumId = :base.id")
-  Future<void> deleteGroupEntries(Album base);
+  @transaction
+  Future<void> updateGroup(Album base, List<Song> referenced) async {
+    await deleteGroupEntries(base.id);
+    await _insertEntries(
+        referenced.mapIndexed((r, i) => generateEntry(base.id, i, r)).toList());
+  }
+
+  AlbumEntry generateEntry(int baseId, int index, Song referenced) {
+    return AlbumEntry(baseId, referenced.id, index);
+  }
+
+  @Query("DELETE * FROM AlbumEntry where albumId = :baseId")
+  Future<void> deleteGroupEntries(int baseId);
 }
 
 // Artist
 @dao
-abstract class ArtistDao extends BaseMutableDao<Artist> with BaseMutableBackendedDao<Artist, Artist_BackendRow> {
+abstract class ArtistDao extends BaseMutableDao<Artist>
+    with BaseMutableBackendedDao<Artist, Artist_BackendRow> {
   Artist_BackendRow generateRow(Artist item, BackendId id) {
     return Artist_BackendRow(item.id, id);
   }

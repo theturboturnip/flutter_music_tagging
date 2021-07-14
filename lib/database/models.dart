@@ -83,34 +83,43 @@ class Album {
 }
 
 @Entity(
-  foreignKeys: [
-    ForeignKey(
-      childColumns: ['base_id'],
-      parentColumns: ['id'],
-      entity: Album,
-    )
-  ],
+// foreignKeys: [
+//   ForeignKey(
+//     childColumns: ['base_id'],
+//     parentColumns: ['id'],
+//     entity: Album,
+//   )
+// ],
 )
-class Album_BackendRow extends BackendRow<Album> {
-  Album_BackendRow(int baseId, BackendId backendId) : super(baseId, backendId);
+class Album_BackendRow {
+  @PrimaryKey()
+  @ColumnInfo(name: "base_id")
+  final int baseId;
+
+  @ColumnInfo(name: "backend_id")
+  final BackendId backendId;
+
+  Album_BackendRow(this.baseId, this.backendId);
 }
 
-@Entity(foreignKeys: [
-  ForeignKey(
-    childColumns: ['album_id'],
-    parentColumns: ['id'],
-    entity: Album,
-  ),
-  ForeignKey(
-    childColumns: ['song_id'],
-    parentColumns: ['id'],
-    entity: Song,
-  )
-], primaryKeys: [
-  // Can only have one element linked to index X of album_id
-  "album_id",
-  "index"
-])
+@Entity(
+// foreignKeys: [
+//   ForeignKey(
+//     childColumns: ['album_id'],
+//     parentColumns: ['id'],
+//     entity: Album,
+//   ),
+//   ForeignKey(
+//     childColumns: ['song_id'],
+//     parentColumns: ['id'],
+//     entity: Song,
+//   )
+// ],
+    primaryKeys: [
+      // Can only have one element linked to index X of album_id
+      "album_id",
+      "index"
+    ])
 class AlbumEntry {
   @ColumnInfo(name: "album_id")
   final int albumId;
