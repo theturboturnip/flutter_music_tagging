@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_audio_query/flutter_audio_query.dart' as AndroidAudio;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 import 'import_populate.dart';
 
@@ -8,9 +9,7 @@ class ImportPopulatePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          ImportPopulateBloc(audioQuery: AndroidAudio.FlutterAudioQuery())
-            ..add(RequestReloadAlbumsEvent()),
+      create: (_) => Modular.get<ImportPopulateBloc>(),
       child: BlocBuilder<ImportPopulateBloc, ImportPopulateState>(
         builder: (context, state) => Scaffold(
           appBar: AppBar(
