@@ -72,6 +72,7 @@ class Album {
   final int id;
 
   final String title;
+  // TODO - should remove this if you can import Partial albums
   final int trackCount;
 
   @ColumnInfo(name: "artist_id")
