@@ -19,12 +19,56 @@ class MusicTaggingApp extends StatelessWidget {
 class ImportPopulatePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Import Albums")),
-      body: BlocProvider(
-          create: (_) => ImportPopulateBloc(audioQuery: FlutterAudioQuery())
-            ..add(RequestReloadAlbumsEvent()),
-          child: SelectedAlbumsList()),
+    return BlocProvider(
+      create: (_) => ImportPopulateBloc(audioQuery: FlutterAudioQuery())
+        ..add(RequestReloadAlbumsEvent()),
+      child: BlocBuilder<ImportPopulateBloc, ImportPopulateState>(
+        builder: (context, state) => Scaffold(
+          appBar: AppBar(
+            title: const Text("Import Albums"),
+            actions: [
+              Checkbox(
+                // If selected all, true => checked
+                // Otherwise, if not empty => partially checked
+                // Otherwise, must be empty => not checked
+                value: state.hasSelectedAll
+                    ? true
+                    : (state.selectedAlbums.isNotEmpty ? null : false),
+                tristate: true,
+                onChanged: (bool? selected) {
+                  // If original value was false, selected = true
+                  // If original value was true, selected = null
+                  // If original value was null, selected = false
+
+                  // => if selected = null, original value was true => we should deselect.
+                  // otherwise, we are partially full or empty => we should select all.
+                  switch (selected) {
+                    case true:
+                      // original was false => empty => select all
+                      context
+                          .read<ImportPopulateBloc>()
+                          .add(SelectionGroupEvent.add());
+                      break;
+                    case false:
+                      // orignal was null => partially full => select all
+                      context
+                          .read<ImportPopulateBloc>()
+                          .add(SelectionGroupEvent.add());
+                      break;
+                    case null:
+                      // original was true => full => deselect all
+                      context
+                          .read<ImportPopulateBloc>()
+                          .add(SelectionGroupEvent.remove());
+                      break;
+                  }
+                },
+              ),
+            ],
+          ),
+          body: SelectedAlbumsList(),
+        ),
+      ),
     );
   }
 }
@@ -143,6 +187,16 @@ class SelectionEvent extends ImportPopulateEvent {
   List<Object?> get props => [type, item];
 }
 
+class SelectionGroupEvent extends ImportPopulateEvent {
+  final SelectionEventType type;
+
+  SelectionGroupEvent.add() : type = SelectionEventType.Add;
+  SelectionGroupEvent.remove() : type = SelectionEventType.Remove;
+
+  @override
+  List<Object?> get props => [type];
+}
+
 class ReceiveAlbumListEvent extends ImportPopulateEvent {
   final IList<AndroidAlbumInfo> albums;
   ReceiveAlbumListEvent(this.albums);
@@ -171,6 +225,10 @@ class ImportPopulateState {
   final IList<AndroidAlbumInfo>? availableAlbums;
   final ISet<TypedBackendId> selectedAlbums;
 
+  bool get hasSelectedAll => (availableAlbums == null
+      ? false
+      : availableAlbums!.length == selectedAlbums.length);
+
   ImportPopulateState.initial()
       : availableAlbums = null,
         selectedAlbums = <TypedBackendId>{}.lock;
@@ -182,6 +240,15 @@ class ImportPopulateState {
 
   ImportPopulateState minus(TypedBackendId item) {
     return ImportPopulateState(availableAlbums, selectedAlbums.remove(item));
+  }
+
+  ImportPopulateState selectingAll() {
+    return ImportPopulateState(
+        availableAlbums, availableAlbums?.map((e) => e.id).toISet() ?? ISet());
+  }
+
+  ImportPopulateState selectingNone() {
+    return ImportPopulateState(availableAlbums, ISet());
   }
 
   ImportPopulateState withAlbums(IList<AndroidAlbumInfo> newAlbums) {
@@ -207,6 +274,15 @@ class ImportPopulateBloc
           break;
         case SelectionEventType.Remove:
           yield state.minus(event.item);
+          break;
+      }
+    } else if (event is SelectionGroupEvent) {
+      switch (event.type) {
+        case SelectionEventType.Add:
+          yield state.selectingAll();
+          break;
+        case SelectionEventType.Remove:
+          yield state.selectingNone();
           break;
       }
     }
