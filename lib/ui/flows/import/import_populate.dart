@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_audio_query/flutter_audio_query.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_music_tagging/database/backend_id.dart';
+import 'package:collection/collection.dart';
 import 'package:rxdart/rxdart.dart';
 
 ///
@@ -31,6 +32,16 @@ class SelectionGroupEvent extends ImportPopulateEvent {
 
   SelectionGroupEvent.add() : type = SelectionEventType.Add;
   SelectionGroupEvent.remove() : type = SelectionEventType.Remove;
+
+  @override
+  List<Object?> get props => [type];
+}
+
+enum AlbumSortType { TitleAsc, TitleDesc }
+
+class ResortEvent extends ImportPopulateEvent {
+  final AlbumSortType type;
+  ResortEvent(this.type);
 
   @override
   List<Object?> get props => [type];
@@ -94,9 +105,27 @@ class ImportPopulateState {
     return ImportPopulateState(availableAlbums, ISet());
   }
 
-  ImportPopulateState withAlbums(IList<AndroidAlbumInfo> newAlbums) {
+  ImportPopulateState withAlbums(IList<AndroidAlbumInfo> newAlbums,
+      {AlbumSortType sortType = AlbumSortType.TitleAsc}) {
     return ImportPopulateState(
-        newAlbums, selectedAlbums.intersection(newAlbums.map((e) => e.id)));
+        newAlbums.sorted(albumSortingFunction(sortType)).toIList(),
+        selectedAlbums.intersection(newAlbums.map((e) => e.id)));
+  }
+
+  ImportPopulateState resorted(AlbumSortType sortType) {
+    return ImportPopulateState(
+        availableAlbums?.sorted(albumSortingFunction(sortType)).toIList(),
+        selectedAlbums);
+  }
+
+  int Function(AndroidAlbumInfo, AndroidAlbumInfo) albumSortingFunction(
+      AlbumSortType sortType) {
+    switch (sortType) {
+      case AlbumSortType.TitleAsc:
+        return (a, b) => a.title.compareTo(b.title);
+      case AlbumSortType.TitleDesc:
+        return (b, a) => a.title.compareTo(b.title);
+    }
   }
 }
 
@@ -132,6 +161,8 @@ class ImportPopulateBloc
           yield state.selectingNone();
           break;
       }
+    } else if (event is ResortEvent) {
+      yield state.resorted(event.type);
     }
     // else if (event is ReceiveAlbumListEvent) {
     //   yield state.withAlbums(event.albums);
@@ -179,6 +210,23 @@ class ImportPopulatePage extends StatelessWidget {
           appBar: AppBar(
             title: const Text("Import Albums"),
             actions: [
+              PopupMenuButton<AlbumSortType>(
+                icon: Icon(Icons.sort_sharp),
+                onSelected: (sortType) => context
+                    .read<ImportPopulateBloc>()
+                    .add(ResortEvent(sortType)),
+                itemBuilder: (BuildContext context) =>
+                    <PopupMenuEntry<AlbumSortType>>[
+                  const PopupMenuItem<AlbumSortType>(
+                    value: AlbumSortType.TitleAsc,
+                    child: Text('Title (Ascending)'),
+                  ),
+                  const PopupMenuItem<AlbumSortType>(
+                    value: AlbumSortType.TitleDesc,
+                    child: Text('Title (Descending)'),
+                  ),
+                ],
+              ),
               Checkbox(
                 // If selected all, true => checked
                 // Otherwise, if not empty => partially checked
