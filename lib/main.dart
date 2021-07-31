@@ -2,12 +2,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'main_apps.dart';
-import 'ui/src/flows/import/import_populate.dart';
+import 'package:flutter_music_tagging/ui/ui.dart';
 
-import 'package:flutter_audio_query/flutter_audio_query.dart' as AndroidAudio;
-
-import 'ui/src/flows/import/public.dart';
+class MusicTaggingApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      initialRoute: "/",
+    ).modular();
+  }
+}
 
 class AppModule extends Module {
   // Provide a list of dependencies to inject into your project
@@ -19,13 +23,6 @@ class AppModule extends Module {
   List<ModularRoute> get routes => [
         // TODO - / route should be a title page or something?
         // not the same as when you open the library
-        ModuleRoute("/", module: HomeModule())
-      ];
-}
-
-class HomeModule extends Module {
-  @override
-  List<ModularRoute> get routes => [
         ChildRoute("/", child: (_, args) => HomeWidget()),
         ModuleRoute("/import", module: ImportModule()),
       ];
@@ -48,20 +45,6 @@ class HomeWidget extends StatelessWidget {
       ),
     );
   }
-}
-
-class ImportModule extends Module {
-  @override
-  List<Bind> get binds => [
-        Bind.factory((i) =>
-            ImportPopulateBloc(audioQuery: AndroidAudio.FlutterAudioQuery())
-              ..add(RequestReloadAlbumsEvent())),
-      ];
-
-  @override
-  List<ModularRoute> get routes => [
-        ChildRoute("/", child: (_, args) => ImportPopulatePage()),
-      ];
 }
 
 void main() {

@@ -1,10 +1,14 @@
 import 'package:equatable/equatable.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_audio_query/flutter_audio_query.dart';
+import 'package:flutter_audio_query/flutter_audio_query.dart' as AndroidAudio;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_music_tagging/database/backend_id.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+
+import 'common.dart';
+import 'import_root.dart';
 
 ///
 /// BLOC EVENTS
@@ -63,17 +67,6 @@ class RequestReloadAlbumsEvent extends ImportPopulateEvent {
 /// BLOC STATE
 ///
 
-class AndroidAlbumInfo extends Equatable {
-  final String title;
-  final String artistName;
-  final TypedBackendId id;
-
-  AndroidAlbumInfo(this.id, this.title, this.artistName);
-
-  @override
-  List<Object?> get props => [title, artistName, id];
-}
-
 class ImportPopulateState {
   final IList<AndroidAlbumInfo>? availableAlbums;
   final ISet<TypedBackendId> selectedAlbums;
@@ -82,9 +75,13 @@ class ImportPopulateState {
       ? false
       : availableAlbums!.length == selectedAlbums.length);
 
-  ImportPopulateState.initial()
+  ISet<AndroidAlbumInfo> get selectedAlbumsAsAlbums => availableAlbums == null
+      ? ISet()
+      : availableAlbums!.where((e) => selectedAlbums.contains(e.id)).toISet();
+
+  ImportPopulateState.initial(ISet<TypedBackendId> selectedItems)
       : availableAlbums = null,
-        selectedAlbums = <TypedBackendId>{}.lock;
+        selectedAlbums = selectedItems;
   ImportPopulateState(this.availableAlbums, this.selectedAlbums);
 
   ImportPopulateState plus(TypedBackendId item) {
@@ -134,10 +131,11 @@ class ImportPopulateState {
 
 class ImportPopulateBloc
     extends Bloc<ImportPopulateEvent, ImportPopulateState> {
-  ImportPopulateBloc({required this.audioQuery})
-      : super(ImportPopulateState.initial());
+  ImportPopulateBloc(
+      {required this.audioQuery, required ISet<TypedBackendId> alreadySelected})
+      : super(ImportPopulateState.initial(alreadySelected));
 
-  final FlutterAudioQuery audioQuery;
+  final AndroidAudio.FlutterAudioQuery audioQuery;
 
   @override
   Stream<ImportPopulateState> mapEventToState(
@@ -277,5 +275,111 @@ class _SelectedAlbumsListState extends State<SelectedAlbumsList> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+}
+
+///
+/// MODULE
+///
+
+class ImportPopulateModule extends Module {
+  List<Bind> get binds => [
+        // TODO - this is supposed to bring the parent scope ImportRootBloc into this scope. May be unnecessary
+        Bind((i) => i.get<ImportRootBloc>()),
+        Bind.factory((i) => ImportPopulateBloc(
+            audioQuery: AndroidAudio.FlutterAudioQuery(),
+            alreadySelected: i
+                .get<ImportRootBloc>()
+                .state
+                .selectedRoots
+                .map((e) => e.id)
+                .toISet())
+          ..add(RequestReloadAlbumsEvent())),
+      ];
+
+  @override
+  List<ModularRoute> get routes =>
+      [ChildRoute("/", child: (_, __) => ImportPopulatePage())];
+}
+
+class ImportPopulatePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => Modular.get<ImportPopulateBloc>(),
+      child: BlocBuilder<ImportPopulateBloc, ImportPopulateState>(
+        builder: (context, state) => WillPopScope(
+          onWillPop: () async {
+            // Set the root bloc's selected data when we leave
+            Modular.get<ImportRootBloc>().add(
+              ImportRootSetRoots(state.selectedAlbumsAsAlbums),
+            );
+            return true;
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text("Import Albums"),
+              actions: [
+                PopupMenuButton<AlbumSortType>(
+                  icon: Icon(Icons.sort_sharp),
+                  onSelected: (sortType) => context
+                      .read<ImportPopulateBloc>()
+                      .add(ResortEvent(sortType)),
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<AlbumSortType>>[
+                    const PopupMenuItem<AlbumSortType>(
+                      value: AlbumSortType.TitleAsc,
+                      child: Text('Title (Ascending)'),
+                    ),
+                    const PopupMenuItem<AlbumSortType>(
+                      value: AlbumSortType.TitleDesc,
+                      child: Text('Title (Descending)'),
+                    ),
+                  ],
+                ),
+                Checkbox(
+                  // If selected all, true => checked
+                  // Otherwise, if not empty => partially checked
+                  // Otherwise, must be empty => not checked
+                  value: state.hasSelectedAll
+                      ? true
+                      : (state.selectedAlbums.isNotEmpty ? null : false),
+                  tristate: true,
+                  onChanged: (bool? selected) {
+                    // If original value was false, selected = true
+                    // If original value was true, selected = null
+                    // If original value was null, selected = false
+
+                    // => if selected = null, original value was true => we should deselect.
+                    // otherwise, we are partially full or empty => we should select all.
+                    switch (selected) {
+                      case true:
+                        // original was false => empty => select all
+                        context
+                            .read<ImportPopulateBloc>()
+                            .add(SelectionGroupEvent.add());
+                        break;
+                      case false:
+                        // orignal was null => partially full => select all
+                        context
+                            .read<ImportPopulateBloc>()
+                            .add(SelectionGroupEvent.add());
+                        break;
+                      case null:
+                        // original was true => full => deselect all
+                        context
+                            .read<ImportPopulateBloc>()
+                            .add(SelectionGroupEvent.remove());
+                        break;
+                    }
+                  },
+                ),
+              ],
+            ),
+            body: SelectedAlbumsList(),
+          ),
+        ),
+      ),
+    );
   }
 }
