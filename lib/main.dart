@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:flutter_music_tagging/ui/ui.dart';
+
+import 'media_modules/hub.dart';
 
 class MusicTaggingApp extends StatelessWidget {
   @override
@@ -21,10 +22,12 @@ class AppModule extends Module {
   // Provide all the routes for your module
   @override
   List<ModularRoute> get routes => [
+        // Top-level route hub for all connected media modules
+        MediaModuleHubRoute(),
+
         // TODO - / route should be a title page or something?
-        // not the same as when you open the library
         ChildRoute("/", child: (_, args) => HomeWidget()),
-        ModuleRoute("/import", module: ImportModule()),
+        ChildRoute("/import", child: (_, args) => ModuleImportListWidget()),
       ];
 }
 
@@ -38,7 +41,7 @@ class HomeWidget extends StatelessWidget {
           children: [
             ElevatedButton(
               onPressed: () => Modular.to.pushNamed('/import'),
-              child: const Text("Import from Android Media"),
+              child: const Text("Import Music"),
             ),
           ],
         ),
