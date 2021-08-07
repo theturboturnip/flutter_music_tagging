@@ -8,16 +8,13 @@ import 'common.dart';
 import 'import_populate.dart';
 
 class ImportRootState extends Equatable {
-  final int currentStep;
   final ISet<AndroidAlbumInfo> selectedRoots;
 
-  ImportRootState.initial()
-      : currentStep = 0,
-        selectedRoots = ISet<AndroidAlbumInfo>();
-  ImportRootState({required this.currentStep, required this.selectedRoots});
+  ImportRootState.initial() : selectedRoots = ISet<AndroidAlbumInfo>();
+  ImportRootState({required this.selectedRoots});
 
   ImportRootState withRoots(ISet<AndroidAlbumInfo> newRoots) {
-    return ImportRootState(currentStep: 1, selectedRoots: newRoots);
+    return ImportRootState(selectedRoots: newRoots);
   }
 
   @override
@@ -72,32 +69,36 @@ class ImportRootPage extends StatelessWidget {
         create: (_) => Modular.get<ImportRootBloc>(),
         child: BlocBuilder<ImportRootBloc, ImportRootState>(
           builder: (context, state) {
-            return Stepper(
-              currentStep: state.currentStep,
-              steps: <Step>[
-                Step(
-                  title: const Text('Select Root Albums'),
-                  content: Container(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      children: [
-                        ElevatedButton(
-                            child: const Text('Open Android Media'),
-                            onPressed: () =>
-                                Modular.to.pushNamed("select_roots")),
-                        Text('Selected ${state.selectedRoots.length} albums'),
-                      ],
-                    ),
-                  ),
-                ),
-                const Step(
-                  title: Text('Step 2 title'),
-                  content: Text('Content for Step 2'),
-                ),
-              ],
+            return ListView.builder(
+              itemCount: state.selectedRoots.length,
+              itemBuilder: (context, i) => Container(
+                  padding: EdgeInsets.all(8),
+                  child: Text(state.selectedRoots[i].title)),
             );
           },
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Modular.to.pushNamed("select_roots"),
+        child: const Icon(Icons.add),
+        tooltip: 'Create',
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        child: Row(
+          children: [
+            TextButton(
+              onPressed: () {},
+              child: const Text("Merge Dupes"),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () {},
+              child: const Text("Confirm"),
+            )
+          ],
+        ),
+        shape: const CircularNotchedRectangle(),
       ),
     );
   }
