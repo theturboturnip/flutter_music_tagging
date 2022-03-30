@@ -3,23 +3,28 @@ import 'package:floor/floor.dart';
 import 'package:flutter_music_tagging/database/backend_id.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
 
-import 'daos.dart';
-import 'models.dart';
+import 'raw_db.dart';
+import 'unified_library_db.dart';
 
 part 'database.g.dart'; // the generated code will be there
 
 @TypeConverters([BackendIdConverter])
 @Database(version: 1, entities: [
-  Song,
-  Song_BackendRow,
-  Album,
-  Album_BackendRow,
-  AlbumEntry,
-  Artist,
-  Artist_BackendRow
+  RawSong,
+  RawSongArtist,
+  RawAlbum,
+  RawAlbumArtist,
+  RawAlbumEntry,
+  RawArtist,
+  UnifiedSong,
+  UnifiedAlbum,
+  UnifiedAlbumEntry,
+  UnifiedArtist,
+], views: [
+  UnifiedSongRawAlbumId,
+  UnifiedSongUnifiedAlbumId,
 ])
 abstract class AppDatabase extends FloorDatabase {
-  SongDao get songDao;
-  AlbumDao get albumDao;
-  ArtistDao get artistDao;
+  RawDataDao get rawDataDao;
+  UnifiedDataDao get unifiedDataDao;
 }
