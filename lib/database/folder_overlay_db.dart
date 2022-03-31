@@ -28,17 +28,21 @@ class DirTreeNode {
 
 @dao
 abstract class DirDao {
-  @Query("SELECT * FROM DirTreeNode WHERE parentTreeNodeId = NULL")
+  @Query("SELECT DISTINCT * FROM DirTreeNode WHERE parentTreeNodeId = NULL")
   Future<List<DirTreeNode>> dirChildrenOfNull();
-  @Query("SELECT * FROM UnifiedAlbum "
+  @Query("SELECT DISTINCT * FROM UnifiedAlbum "
       "WHERE parentTreeNodeId = NULL")
   Future<List<UnifiedAlbum>> albumChildrenOfNull();
 
-  @Query("SELECT * FROM DirTreeNode WHERE parentTreeNodeId = :parentId")
+  @Query(
+      "SELECT DISTINCT * FROM DirTreeNode WHERE parentTreeNodeId = :parentId")
   Future<List<DirTreeNode>> dirChildrenOf(int parentId);
-  @Query("SELECT * FROM UnifiedAlbum "
+  @Query("SELECT DISTINCT * FROM UnifiedAlbum "
       "WHERE parent_tree_node_id = :parentId")
   Future<List<UnifiedAlbum>> albumChildrenOf(int parentId);
+  @Query("SELECT DISTINCT * FROM UnifiedAlbum "
+      "WHERE parent_tree_node_id IN (:parentIds)")
+  Future<List<UnifiedAlbum>> albumChildrenOfList(List<int> parentIds);
 
   @Query("SELECT * FROM DirTreeNode WHERE id = :id")
   Future<DirTreeNode?> getById(int id);
@@ -73,5 +77,25 @@ abstract class DirDao {
     } else {
       return false;
     }
+  }
+
+  @transaction
+  Future<List<UnifiedAlbum>> albumChildrenOfBfs(
+      List<DirTreeNode> initialNodes) async {
+    var frontier = initialNodes.map((e) => e.id).toList();
+    // Add to the frontier
+    for (int i = 0; i < frontier.length; i++) {
+      var newElements = await dirChildrenOf(frontier[i]);
+      frontier.addAll(
+          // Ignore newElements that are already in the frontier
+          newElements.map((e) => e.id).where((id) => !frontier.contains(id))
+          // add the rest to the frontier
+          );
+    }
+
+    // We now have a list of nodes that are children/children of children/etc.
+    // of the parent nodes
+    // Collect all albums that are children of any elements in this list
+    return albumChildrenOfList(frontier);
   }
 }
