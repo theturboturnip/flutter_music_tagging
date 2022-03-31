@@ -29,17 +29,13 @@ class ImportRootSetRoots extends ImportRootEvent {
   ImportRootSetRoots(this.newRoots);
 
   @override
-  List<Object?> get props => throw UnimplementedError();
+  List<Object?> get props => [newRoots];
 }
 
 class ImportRootBloc extends Bloc<ImportRootEvent, ImportRootState> {
-  ImportRootBloc() : super(ImportRootState.initial());
-
-  @override
-  Stream<ImportRootState> mapEventToState(ImportRootEvent event) async* {
-    if (event is ImportRootSetRoots) {
-      yield state.withRoots(event.newRoots);
-    }
+  ImportRootBloc() : super(ImportRootState.initial()) {
+    on<ImportRootSetRoots>(
+        (event, emit) => emit(state.withRoots(event.newRoots)));
   }
 }
 
@@ -72,8 +68,14 @@ class ImportRootPage extends StatelessWidget {
             return ListView.builder(
               itemCount: state.selectedRoots.length,
               itemBuilder: (context, i) => Container(
-                  padding: EdgeInsets.all(8),
-                  child: Text(state.selectedRoots[i].title)),
+                padding: EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Text(state.selectedRoots[i].title),
+                    Text(state.selectedRoots[i].artistName)
+                  ],
+                ),
+              ),
             );
           },
         ),
@@ -87,13 +89,13 @@ class ImportRootPage extends StatelessWidget {
       bottomNavigationBar: BottomAppBar(
         child: Row(
           children: [
+            // TextButton(
+            //   onPressed: () {},
+            //   child: const Text("Merge Dupes"),
+            // ),
+            // const Spacer(),
             TextButton(
-              onPressed: () {},
-              child: const Text("Merge Dupes"),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () {},
+              onPressed: () => Modular.to.pushNamed("importing"),
               child: const Text("Confirm"),
             )
           ],

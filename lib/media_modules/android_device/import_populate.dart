@@ -133,42 +133,35 @@ class ImportPopulateBloc
     extends Bloc<ImportPopulateEvent, ImportPopulateState> {
   ImportPopulateBloc(
       {required this.audioQuery, required ISet<TypedBackendId> alreadySelected})
-      : super(ImportPopulateState.initial(alreadySelected));
+      : super(ImportPopulateState.initial(alreadySelected)) {
+    on<SelectionEvent>((event, emit) {
+      switch (event.type) {
+        case SelectionEventType.Add:
+          emit(state.plus(event.item));
+          break;
+        case SelectionEventType.Remove:
+          emit(state.minus(event.item));
+          break;
+      }
+    });
+    on<SelectionGroupEvent>((event, emit) {
+      switch (event.type) {
+        case SelectionEventType.Add:
+          emit(state.selectingAll());
+          break;
+        case SelectionEventType.Remove:
+          emit(state.selectingNone());
+          break;
+      }
+    });
+    on<ResortEvent>((event, emit) => emit(state.resorted(event.type)));
+    on<RequestReloadAlbumsEvent>((event, emit) async {
+      final albums = await _retrieveAndroidAlbums();
+      emit(state.withAlbums(albums));
+    });
+  }
 
   final AndroidAudio.FlutterAudioQuery audioQuery;
-
-  @override
-  Stream<ImportPopulateState> mapEventToState(
-      ImportPopulateEvent event) async* {
-    if (event is SelectionEvent) {
-      switch (event.type) {
-        case SelectionEventType.Add:
-          yield state.plus(event.item);
-          break;
-        case SelectionEventType.Remove:
-          yield state.minus(event.item);
-          break;
-      }
-    } else if (event is SelectionGroupEvent) {
-      switch (event.type) {
-        case SelectionEventType.Add:
-          yield state.selectingAll();
-          break;
-        case SelectionEventType.Remove:
-          yield state.selectingNone();
-          break;
-      }
-    } else if (event is ResortEvent) {
-      yield state.resorted(event.type);
-    }
-    // else if (event is ReceiveAlbumListEvent) {
-    //   yield state.withAlbums(event.albums);
-    // }
-    else if (event is RequestReloadAlbumsEvent) {
-      final albums = await _retrieveAndroidAlbums();
-      yield state.withAlbums(albums);
-    }
-  }
 
   Future<IList<AndroidAlbumInfo>> _retrieveAndroidAlbums() async {
     final albums = await audioQuery.getAlbums();
@@ -178,17 +171,6 @@ class ImportPopulateBloc
             e.title,
             e.artist))
         .toIList();
-  }
-
-  @override
-  Stream<Transition<ImportPopulateEvent, ImportPopulateState>> transformEvents(
-    Stream<ImportPopulateEvent> events,
-    TransitionFunction<ImportPopulateEvent, ImportPopulateState> transitionFn,
-  ) {
-    return super.transformEvents(
-      events, //.debounceTime(const Duration(milliseconds: 500)),
-      transitionFn,
-    );
   }
 }
 
