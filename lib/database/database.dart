@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart' as sqflite;
 import 'raw_db.dart';
 import 'unified_library_db.dart';
 import 'folder_overlay_db.dart';
+import 'tag_overlay_db.dart';
 
 part 'database.g.dart'; // the generated code will be there
 
@@ -22,6 +23,11 @@ part 'database.g.dart'; // the generated code will be there
   UnifiedAlbumEntry,
   UnifiedArtist,
   DirTreeNode,
+  Tag,
+  TagDirJoin,
+  TagAlbumJoin,
+  TagArtistJoin,
+  TagSongJoin,
 ], views: [
   UnifiedSongRawAlbumId,
   UnifiedSongUnifiedAlbumId,
@@ -34,4 +40,5 @@ abstract class AppDatabase extends FloorDatabase {
   RawDataDao get rawDataDao;
   UnifiedDataDao get unifiedDataDao;
   DirDao get dirDao;
+  TagDao get tagDao;
 }

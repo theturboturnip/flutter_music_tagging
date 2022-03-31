@@ -223,6 +223,10 @@ class UnifiedAlbumUnifiedArtistId {
 abstract class UnifiedDataDao {
   @Query("SELECT * FROM RawSong WHERE unified_id = :songId")
   Future<List<RawSong>> getRawIdsForUnifiedSong(int songId);
+  @Query(
+      "SELECT * FROM RawSong WHERE unified_id IN (:songIds) AND backendId LIKE :backendType || '\$%'")
+  Future<List<RawSong>> getRawIdsForUnifiedSongsInBackend(
+      List<int> songIds, String backendType);
   @Query("SELECT * FROM RawAlbum WHERE unified_id = :albumId")
   Future<List<RawAlbum>> getRawIdsForUnifiedAlbum(int albumId);
   @Query("SELECT * FROM RawArtist WHERE unified_id = :artistId")
@@ -331,6 +335,11 @@ abstract class UnifiedDataDao {
       "ON UnifiedSongUnifiedArtistId.unified_artist_id = UnifiedArtist.id "
       "WHERE UnifiedSongUnifiedArtistId.unified_song_id = :songId")
   Future<List<UnifiedArtist>> getSongArtistIds(int songId);
+  @Query("SELECT DISTINCT * FROM UnifiedSong "
+      "INNER JOIN UnifiedSongUnifiedArtistId "
+      "ON UnifiedSongUnifiedArtistId.unified_song_id = UnifiedSong.id "
+      "WHERE UnifiedSongUnifiedArtistId.unified_artist_id IN (:artistIds)")
+  Future<List<UnifiedSong>> getArtistsSongs(List<int> artistIds);
 
   /// foreach UnifiedAlbum,
   ///     UnifiedAlbum.artists = set of unified(artist)
@@ -340,4 +349,15 @@ abstract class UnifiedDataDao {
       "ON UnifiedAlbumUnifiedArtistId.unified_artist_id = UnifiedArtist.id "
       "WHERE UnifiedAlbumUnifiedArtistId.unified_album_id = :albumId")
   Future<List<UnifiedArtist>> getAlbumArtistIds(int albumId);
+  @Query("SELECT DISTINCT * FROM UnifiedAlbum "
+      "INNER JOIN UnifiedAlbumUnifiedArtistId "
+      "ON UnifiedAlbumUnifiedArtistId.unified_album_id = UnifiedAlbum.id "
+      "WHERE UnifiedAlbumUnifiedArtistId.unified_artist_id IN (:artistIds)")
+  Future<List<UnifiedAlbum>> getArtistsAlbums(List<int> artistIds);
+
+  @Query("SELECT * FROM UnifiedSong "
+      "INNER JOIN UnifiedAlbumEntry "
+      "ON UnifiedAlbumEntry.song_id = UnifiedSong.id "
+      "WHERE UnifiedAlbumEntry.album_id IN (:albumIds)")
+  Future<List<UnifiedSong>> getAlbumSongs(List<int> albumIds);
 }

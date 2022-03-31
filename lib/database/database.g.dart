@@ -67,6 +67,8 @@ class _$AppDatabase extends AppDatabase {
 
   DirDao? _dirDaoInstance;
 
+  TagDao? _tagDaoInstance;
+
   Future<sqflite.Database> open(String path, List<Migration> migrations,
       [Callback? callback]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
@@ -107,11 +109,29 @@ class _$AppDatabase extends AppDatabase {
             'CREATE TABLE IF NOT EXISTS `UnifiedArtist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL)');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `DirTreeNode` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `parent_tree_node_id` INTEGER, `name` TEXT NOT NULL, FOREIGN KEY (`parent_tree_node_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `Tag` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `hexRGBA` INTEGER NOT NULL)');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `TagDirJoin` (`tag_id` INTEGER NOT NULL, `dir_id` INTEGER NOT NULL, FOREIGN KEY (`tag_id`) REFERENCES `Tag` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`dir_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`tag_id`, `dir_id`))');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `TagAlbumJoin` (`tag_id` INTEGER NOT NULL, `album_id` INTEGER NOT NULL, FOREIGN KEY (`tag_id`) REFERENCES `Tag` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`album_id`) REFERENCES `UnifiedAlbum` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`tag_id`, `album_id`))');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `TagArtistJoin` (`tag_id` INTEGER NOT NULL, `artist_id` INTEGER NOT NULL, FOREIGN KEY (`tag_id`) REFERENCES `Tag` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`artist_id`) REFERENCES `UnifiedArtist` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`tag_id`, `artist_id`))');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `TagSongJoin` (`tag_id` INTEGER NOT NULL, `song_id` INTEGER NOT NULL, FOREIGN KEY (`tag_id`) REFERENCES `Tag` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`song_id`) REFERENCES `UnifiedSong` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`tag_id`, `song_id`))');
 
         await database.execute(
             'CREATE VIEW IF NOT EXISTS `UnifiedSongRawAlbumId` AS SELECT RawAlbumEntry.album_id as raw_album_id, RawSong.unified_id as unified_song_id FROM RawSong INNER JOIN RawAlbumEntry ON RawSong.id = RawAlbumEntry.song_id WHERE RawSong.unified_id NOT NULL');
         await database.execute(
-            'CREATE VIEW IF NOT EXISTS `UnifiedSongUnifiedAlbumId` AS SELECT DISTINCT RawAlbum.unified_id as unified_album_id, UnifiedSongRawAlbumId.unified_song_id as unified_song_id FROM UnifiedSongRawAlbumId INNER JOIN RawAlbum ON UnifiedSongUnifiedAlbumId.rawAlbumId = RawAlbum.id WHERE RawAlbum.unified_id NOT NULL');
+            'CREATE VIEW IF NOT EXISTS `UnifiedSongUnifiedAlbumId` AS SELECT DISTINCT RawAlbum.unified_id as unified_album_id, UnifiedSongRawAlbumId.unified_song_id as unified_song_id FROM UnifiedSongRawAlbumId INNER JOIN RawAlbum ON UnifiedSongUnifiedAlbumId.raw_album_id = RawAlbum.id WHERE RawAlbum.unified_id NOT NULL');
+        await database.execute(
+            'CREATE VIEW IF NOT EXISTS `UnifiedSongRawArtistId` AS SELECT RawSongArtist.artist_id as raw_artist_id, RawSong.unified_id as unified_song_id FROM RawSong INNER JOIN RawSongArtist ON RawSong.id = RawSongArtist.song_id WHERE RawSong.unified_id NOT NULL');
+        await database.execute(
+            'CREATE VIEW IF NOT EXISTS `UnifiedSongUnifiedArtistId` AS SELECT DISTINCT RawArtist.unified_id as unified_artist_id, UnifiedSongRawArtistId.unified_song_id as unified_song_id FROM UnifiedSongRawArtistId INNER JOIN RawArtist ON UnifiedSongRawArtistId.raw_artist_id = RawArtist.id WHERE RawArtist.unified_id NOT NULL');
+        await database.execute(
+            'CREATE VIEW IF NOT EXISTS `UnifiedAlbumRawArtistId` AS SELECT RawAlbumArtist.artist_id as raw_artist_id, RawAlbum.unified_id as unified_album_id FROM RawAlbum INNER JOIN RawAlbumArtist ON RawAlbum.id = RawAlbumArtist.album_id WHERE RawAlbum.unified_id NOT NULL');
+        await database.execute(
+            'CREATE VIEW IF NOT EXISTS `UnifiedAlbumUnifiedArtistId` AS SELECT DISTINCT RawArtist.unified_id as unified_artist_id, UnifiedAlbumRawArtistId.unified_album_id as unified_album_id FROM UnifiedAlbumRawArtistId INNER JOIN RawArtist ON UnifiedAlbumRawArtistId.raw_artist_id = RawArtist.id WHERE RawArtist.unified_id NOT NULL');
 
         await callback?.onCreate?.call(database, version);
       },
@@ -133,6 +153,11 @@ class _$AppDatabase extends AppDatabase {
   @override
   DirDao get dirDao {
     return _dirDaoInstance ??= _$DirDao(database, changeListener);
+  }
+
+  @override
+  TagDao get tagDao {
+    return _tagDaoInstance ??= _$TagDao(database, changeListener);
   }
 }
 
@@ -180,6 +205,26 @@ class _$UnifiedDataDao extends UnifiedDataDao {
             row['title'] as String,
             row['lengthMs'] as int),
         arguments: [songId]);
+  }
+
+  @override
+  Future<List<RawSong>> getRawIdsForUnifiedSongsInBackend(
+      List<int> songIds, String backendType) async {
+    const offset = 2;
+    final _sqliteVariablesForSongIds =
+        Iterable<String>.generate(songIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT * FROM RawSong WHERE unified_id IN (' +
+            _sqliteVariablesForSongIds +
+            ') AND backendId LIKE ?1 || \'\$%\'',
+        mapper: (Map<String, Object?> row) => RawSong(
+            row['id'] as int,
+            _backendIdConverter.decode(row['backend_id'] as String),
+            row['unified_id'] as int?,
+            row['title'] as String,
+            row['lengthMs'] as int),
+        arguments: [backendType, ...songIds]);
   }
 
   @override
@@ -304,9 +349,67 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   @override
   Future<List<UnifiedAlbum>> getSongAlbumIds(int songId) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM UnifiedAlbum INNER JOIN UnifiedSongUnifiedAlbumId ON UnifiedSongUnifiedAlbumId.unified_album_id = UnifiedAlbum.id WHERE UnifiedSongUnifiedAlbumId.unified_song_id = ?1',
+        'SELECT * FROM UnifiedAlbum INNER JOIN UnifiedSongUnifiedAlbumId ON UnifiedSongUnifiedAlbumId.unified_album_id = UnifiedAlbum.id WHERE UnifiedSongUnifiedAlbumId.unified_song_id IN ?1',
         mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
         arguments: [songId]);
+  }
+
+  @override
+  Future<List<UnifiedArtist>> getSongArtistIds(int songId) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedArtist INNER JOIN UnifiedSongUnifiedArtistId ON UnifiedSongUnifiedArtistId.unified_artist_id = UnifiedArtist.id WHERE UnifiedSongUnifiedArtistId.unified_song_id = ?1',
+        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int, row['name'] as String),
+        arguments: [songId]);
+  }
+
+  @override
+  Future<List<UnifiedSong>> getArtistsSongs(List<int> artistIds) async {
+    const offset = 1;
+    final _sqliteVariablesForArtistIds =
+        Iterable<String>.generate(artistIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT DISTINCT * FROM UnifiedSong INNER JOIN UnifiedSongUnifiedArtistId ON UnifiedSongUnifiedArtistId.unified_song_id = UnifiedSong.id WHERE UnifiedSongUnifiedArtistId.unified_artist_id IN (' +
+            _sqliteVariablesForArtistIds +
+            ')',
+        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+        arguments: [...artistIds]);
+  }
+
+  @override
+  Future<List<UnifiedArtist>> getAlbumArtistIds(int albumId) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedArtist INNER JOIN UnifiedAlbumUnifiedArtistId ON UnifiedAlbumUnifiedArtistId.unified_artist_id = UnifiedArtist.id WHERE UnifiedAlbumUnifiedArtistId.unified_album_id = ?1',
+        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int, row['name'] as String),
+        arguments: [albumId]);
+  }
+
+  @override
+  Future<List<UnifiedAlbum>> getArtistsAlbums(List<int> artistIds) async {
+    const offset = 1;
+    final _sqliteVariablesForArtistIds =
+        Iterable<String>.generate(artistIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT DISTINCT * FROM UnifiedAlbum INNER JOIN UnifiedAlbumUnifiedArtistId ON UnifiedAlbumUnifiedArtistId.unified_album_id = UnifiedAlbum.id WHERE UnifiedAlbumUnifiedArtistId.unified_artist_id IN (' +
+            _sqliteVariablesForArtistIds +
+            ')',
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
+        arguments: [...artistIds]);
+  }
+
+  @override
+  Future<List<UnifiedSong>> getAlbumSongs(List<int> albumIds) async {
+    const offset = 1;
+    final _sqliteVariablesForAlbumIds =
+        Iterable<String>.generate(albumIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedSong INNER JOIN UnifiedAlbumEntry ON UnifiedAlbumEntry.song_id = UnifiedSong.id WHERE UnifiedAlbumEntry.album_id IN (' +
+            _sqliteVariablesForAlbumIds +
+            ')',
+        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+        arguments: [...albumIds]);
   }
 
   @override
@@ -393,7 +496,7 @@ class _$DirDao extends DirDao {
   @override
   Future<List<DirTreeNode>> dirChildrenOfNull() async {
     return _queryAdapter.queryList(
-        'SELECT * FROM DirTreeNode WHERE parentTreeNodeId = NULL',
+        'SELECT DISTINCT * FROM DirTreeNode WHERE parentTreeNodeId = NULL',
         mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
             row['name'] as String, row['parent_tree_node_id'] as int?));
   }
@@ -401,7 +504,7 @@ class _$DirDao extends DirDao {
   @override
   Future<List<UnifiedAlbum>> albumChildrenOfNull() async {
     return _queryAdapter.queryList(
-        'SELECT * FROM UnifiedAlbum WHERE parentTreeNodeId = NULL',
+        'SELECT DISTINCT * FROM UnifiedAlbum WHERE parentTreeNodeId = NULL',
         mapper: (Map<String, Object?> row) => UnifiedAlbum(
             row['id'] as int,
             row['title'] as String,
@@ -412,7 +515,7 @@ class _$DirDao extends DirDao {
   @override
   Future<List<DirTreeNode>> dirChildrenOf(int parentId) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM DirTreeNode WHERE parentTreeNodeId = ?1',
+        'SELECT DISTINCT * FROM DirTreeNode WHERE parentTreeNodeId = ?1',
         mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
             row['name'] as String, row['parent_tree_node_id'] as int?),
         arguments: [parentId]);
@@ -421,13 +524,31 @@ class _$DirDao extends DirDao {
   @override
   Future<List<UnifiedAlbum>> albumChildrenOf(int parentId) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM UnifiedAlbum WHERE parent_tree_node_id = ?1',
+        'SELECT DISTINCT * FROM UnifiedAlbum WHERE parent_tree_node_id = ?1',
         mapper: (Map<String, Object?> row) => UnifiedAlbum(
             row['id'] as int,
             row['title'] as String,
             row['trackCount'] as int,
             row['parent_tree_node_id'] as int?),
         arguments: [parentId]);
+  }
+
+  @override
+  Future<List<UnifiedAlbum>> albumChildrenOfList(List<int> parentIds) async {
+    const offset = 1;
+    final _sqliteVariablesForParentIds =
+        Iterable<String>.generate(parentIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT DISTINCT * FROM UnifiedAlbum WHERE parent_tree_node_id IN (' +
+            _sqliteVariablesForParentIds +
+            ')',
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(
+            row['id'] as int,
+            row['title'] as String,
+            row['trackCount'] as int,
+            row['parent_tree_node_id'] as int?),
+        arguments: [...parentIds]);
   }
 
   @override
@@ -467,6 +588,104 @@ class _$DirDao extends DirDao {
         final transactionDatabase = _$AppDatabase(changeListener)
           ..database = transaction;
         return transactionDatabase.dirDao.insertTreeNode(notInsertedNode);
+      });
+    }
+  }
+
+  @override
+  Future<List<UnifiedAlbum>> albumChildrenOfBfs(
+      List<DirTreeNode> initialNodes) async {
+    if (database is sqflite.Transaction) {
+      return super.albumChildrenOfBfs(initialNodes);
+    } else {
+      return (database as sqflite.Database)
+          .transaction<List<UnifiedAlbum>>((transaction) async {
+        final transactionDatabase = _$AppDatabase(changeListener)
+          ..database = transaction;
+        return transactionDatabase.dirDao.albumChildrenOfBfs(initialNodes);
+      });
+    }
+  }
+}
+
+class _$TagDao extends TagDao {
+  _$TagDao(this.database, this.changeListener)
+      : _queryAdapter = QueryAdapter(database);
+
+  final sqflite.DatabaseExecutor database;
+
+  final StreamController<String> changeListener;
+
+  final QueryAdapter _queryAdapter;
+
+  @override
+  Future<List<DirTreeNode>> getDirectlyTaggedDirs(List<int> tagIds) async {
+    const offset = 1;
+    final _sqliteVariablesForTagIds =
+        Iterable<String>.generate(tagIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT * FROM DirTreeNode INNER JOIN TagAlbumJoin ON TagAlbumJoin.dir_id = DirTreeNode.id WHERE TagAlbumJoin.tag_id IN (' +
+            _sqliteVariablesForTagIds +
+            ')',
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int, row['name'] as String, row['parent_tree_node_id'] as int?),
+        arguments: [...tagIds]);
+  }
+
+  @override
+  Future<List<UnifiedAlbum>> getDirectlyTaggedAlbums(List<int> tagIds) async {
+    const offset = 1;
+    final _sqliteVariablesForTagIds =
+        Iterable<String>.generate(tagIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedAlbum INNER JOIN TagAlbumJoin ON TagAlbumJoin.album_id = UnifiedAlbum.id WHERE TagAlbumJoin.tag_id IN (' +
+            _sqliteVariablesForTagIds +
+            ')',
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
+        arguments: [...tagIds]);
+  }
+
+  @override
+  Future<List<UnifiedArtist>> getDirectlyTaggedArtists(List<int> tagIds) async {
+    const offset = 1;
+    final _sqliteVariablesForTagIds =
+        Iterable<String>.generate(tagIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedArtist INNER JOIN TagArtistJoin ON TagArtistJoin.artist_id = UnifiedArtist.id WHERE TagArtistJoin.tag_id IN (' +
+            _sqliteVariablesForTagIds +
+            ')',
+        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int, row['name'] as String),
+        arguments: [...tagIds]);
+  }
+
+  @override
+  Future<List<UnifiedSong>> getDirectlyTaggedSongs(List<int> tagIds) async {
+    const offset = 1;
+    final _sqliteVariablesForTagIds =
+        Iterable<String>.generate(tagIds.length, (i) => '?${i + offset}')
+            .join(',');
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedSong INNER JOIN TagSongJoin ON TagSongJoin.song_id = UnifiedSong.id WHERE TagSongJoin.tag_id IN (' +
+            _sqliteVariablesForTagIds +
+            ')',
+        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+        arguments: [...tagIds]);
+  }
+
+  @override
+  Future<Set<int>> getAllTaggedUnifiedSongIds(
+      UnifiedDataDao unifiedDataDao, DirDao dirDao, List<int> tagIds) async {
+    if (database is sqflite.Transaction) {
+      return super.getAllTaggedUnifiedSongIds(unifiedDataDao, dirDao, tagIds);
+    } else {
+      return (database as sqflite.Database)
+          .transaction<Set<int>>((transaction) async {
+        final transactionDatabase = _$AppDatabase(changeListener)
+          ..database = transaction;
+        return transactionDatabase.tagDao
+            .getAllTaggedUnifiedSongIds(unifiedDataDao, dirDao, tagIds);
       });
     }
   }
