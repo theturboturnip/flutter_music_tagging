@@ -25,6 +25,10 @@ part 'database.g.dart'; // the generated code will be there
 ], views: [
   UnifiedSongRawAlbumId,
   UnifiedSongUnifiedAlbumId,
+  UnifiedSongRawArtistId,
+  UnifiedSongUnifiedArtistId,
+  UnifiedAlbumRawArtistId,
+  UnifiedAlbumUnifiedArtistId,
 ])
 abstract class AppDatabase extends FloorDatabase {
   RawDataDao get rawDataDao;

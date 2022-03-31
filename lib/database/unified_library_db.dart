@@ -136,7 +136,7 @@ class UnifiedSongRawAlbumId {
 @DatabaseView("SELECT DISTINCT RawAlbum.unified_id as unified_album_id, "
     "UnifiedSongRawAlbumId.unified_song_id as unified_song_id "
     "FROM UnifiedSongRawAlbumId "
-    "INNER JOIN RawAlbum ON UnifiedSongUnifiedAlbumId.rawAlbumId = RawAlbum.id "
+    "INNER JOIN RawAlbum ON UnifiedSongUnifiedAlbumId.raw_album_id = RawAlbum.id "
     "WHERE RawAlbum.unified_id NOT NULL")
 class UnifiedSongUnifiedAlbumId {
   @ColumnInfo(name: "unified_album_id")
@@ -147,35 +147,77 @@ class UnifiedSongUnifiedAlbumId {
   UnifiedSongUnifiedAlbumId(this.unifiedSongId, this.unifiedAlbumId);
 }
 
-/*
-  /// foreach UnifiedSong,
-  ///     UnifiedSong.albums = set of unified(album)
-  ///                          foreach album foreach mapped RawSong
-  @Query("SELECT * FROM UnifiedAlbum INNER JOIN UnifiedSongUnifiedAlbumId ON UnifiedSongUnifiedAlbumId.unified_album_id = UnifiedAlbum.id WHERE UnifiedSongUnifiedAlbumId.unified_song_id = :songId")
-  Future<List<UnifiedAlbum>> getSongAlbumIds(int songId);
+// Map a UnifiedSong ID to the IDs of RawArtists that contain any of the
+// raw constituent songs
+// Doesn't consider Albums at all
+@DatabaseView("SELECT RawSongArtist.artist_id as raw_artist_id, "
+    "RawSong.unified_id as unified_song_id "
+    "FROM RawSong "
+    "INNER JOIN RawSongArtist ON RawSong.id = RawSongArtist.song_id "
+    "WHERE RawSong.unified_id NOT NULL")
+class UnifiedSongRawArtistId {
+  @ColumnInfo(name: "raw_artist_id")
+  final int rawArtistId;
+  @ColumnInfo(name: "unified_song_id")
+  final int unifiedSongId;
 
-  /// foreach UnifiedSong,
-  ///     UnifiedSong.artists = set of unified(artist)
-  ///                           foreach artist foreach mapped RawSong
-  ///
-  /// - "set" -> use DISTINCT to remove dupes
-  /// - unified(artist) "SELECT unified_id FROM RawArtist"
-  /// - foreach artist of RawSong "INNER JOIN (RawSongArtist INNER JOIN RawSong ON RawSongArtist.songId = RawSong.id"
-  /// - foreach mapped RawSong from UnifiedSong "WHERE RawSong.unifiedId = :songId"
-  @Query("SELECT DISTINCT unified_id FROM RawArtist INNER JOIN "
-      "(RawSongArtist INNER JOIN RawSong ON RawSongArtist.song_id = RawSong.id WHERE RawSong.unified_id = :songId) raw_song_artists "
-      "on RawArtist.id = raw_song_artists.artist_id")
-  Future<List<int>> getSongArtistIds(int songId);
+  UnifiedSongRawArtistId(this.unifiedSongId, this.rawArtistId);
+}
 
-  /// foreach UnifiedAlbum,
-  ///     UnifiedAlbum.artists = set of unified(artist)
-  ///                            foreach artist foreach mapped RawAlbum
-  /// As above, for album artists
-  @Query("SELECT DISTINCT unified_id FROM RawArtist INNER JOIN "
-      "(RawAlbumArtist INNER JOIN RawAlbum ON RawAlbumArtist.album_id = RawAlbum.id WHERE RawAlbum.unified_id = :albumId) raw_album_artists "
-      "on RawArtist.id = raw_album_artists.artist_id")
-  Future<List<int>> getAlbumArtistIds(int albumId);
-*/
+// Map a UnifiedSong ID to UnifiedArtist IDs,
+// where each UnifiedArtist has at least one Raw equivalent containing
+// at least one of the UnifiedSong's Raw equivalents.
+// UnifiedSong.artists = set of unified(artist)
+//    foreach artist containing any mapped RawSong
+@DatabaseView("SELECT DISTINCT RawArtist.unified_id as unified_artist_id, "
+    "UnifiedSongRawArtistId.unified_song_id as unified_song_id "
+    "FROM UnifiedSongRawArtistId "
+    "INNER JOIN RawArtist ON UnifiedSongRawArtistId.raw_artist_id = RawArtist.id "
+    "WHERE RawArtist.unified_id NOT NULL")
+class UnifiedSongUnifiedArtistId {
+  @ColumnInfo(name: "unified_artist_id")
+  final int unifiedArtistId;
+  @ColumnInfo(name: "unified_song_id")
+  final int unifiedSongId;
+
+  UnifiedSongUnifiedArtistId(this.unifiedSongId, this.unifiedArtistId);
+}
+
+// Map a UnifiedAlbum ID to the IDs of RawArtists that contain any of the
+// raw constituent songs
+// Doesn't consider Albums at all
+@DatabaseView("SELECT RawAlbumArtist.artist_id as raw_artist_id, "
+    "RawAlbum.unified_id as unified_album_id "
+    "FROM RawAlbum "
+    "INNER JOIN RawAlbumArtist ON RawAlbum.id = RawAlbumArtist.album_id "
+    "WHERE RawAlbum.unified_id NOT NULL")
+class UnifiedAlbumRawArtistId {
+  @ColumnInfo(name: "raw_artist_id")
+  final int rawArtistId;
+  @ColumnInfo(name: "unified_album_id")
+  final int unifiedAlbumId;
+
+  UnifiedAlbumRawArtistId(this.unifiedAlbumId, this.rawArtistId);
+}
+
+// Map a UnifiedAlbum ID to UnifiedArtist IDs,
+// where each UnifiedArtist has at least one Raw equivalent containing
+// at least one of the UnifiedAlbum's Raw equivalents.
+// UnifiedAlbum.artists = set of unified(artist)
+//    foreach artist containing any mapped RawAlbum
+@DatabaseView("SELECT DISTINCT RawArtist.unified_id as unified_artist_id, "
+    "UnifiedAlbumRawArtistId.unified_album_id as unified_album_id "
+    "FROM UnifiedAlbumRawArtistId "
+    "INNER JOIN RawArtist ON UnifiedAlbumRawArtistId.raw_artist_id = RawArtist.id "
+    "WHERE RawArtist.unified_id NOT NULL")
+class UnifiedAlbumUnifiedArtistId {
+  @ColumnInfo(name: "unified_artist_id")
+  final int unifiedArtistId;
+  @ColumnInfo(name: "unified_album_id")
+  final int unifiedAlbumId;
+
+  UnifiedAlbumUnifiedArtistId(this.unifiedAlbumId, this.unifiedArtistId);
+}
 
 @dao
 abstract class UnifiedDataDao {
@@ -275,7 +317,27 @@ abstract class UnifiedDataDao {
   /// foreach UnifiedSong,
   ///     UnifiedSong.albums = set of unified(album)
   ///                          foreach album foreach mapped RawSong
-  @Query(
-      "SELECT * FROM UnifiedAlbum INNER JOIN UnifiedSongUnifiedAlbumId ON UnifiedSongUnifiedAlbumId.unified_album_id = UnifiedAlbum.id WHERE UnifiedSongUnifiedAlbumId.unified_song_id = :songId")
+  @Query("SELECT * FROM UnifiedAlbum "
+      "INNER JOIN UnifiedSongUnifiedAlbumId "
+      "ON UnifiedSongUnifiedAlbumId.unified_album_id = UnifiedAlbum.id "
+      "WHERE UnifiedSongUnifiedAlbumId.unified_song_id IN :songId")
   Future<List<UnifiedAlbum>> getSongAlbumIds(int songId);
+
+  /// foreach UnifiedSong,
+  ///     UnifiedSong.artists = set of unified(artist)
+  ///                          foreach artist foreach mapped RawSong
+  @Query("SELECT * FROM UnifiedArtist "
+      "INNER JOIN UnifiedSongUnifiedArtistId "
+      "ON UnifiedSongUnifiedArtistId.unified_artist_id = UnifiedArtist.id "
+      "WHERE UnifiedSongUnifiedArtistId.unified_song_id = :songId")
+  Future<List<UnifiedArtist>> getSongArtistIds(int songId);
+
+  /// foreach UnifiedAlbum,
+  ///     UnifiedAlbum.artists = set of unified(artist)
+  ///                          foreach artist foreach mapped RawSong
+  @Query("SELECT * FROM UnifiedArtist "
+      "INNER JOIN UnifiedAlbumUnifiedArtistId "
+      "ON UnifiedAlbumUnifiedArtistId.unified_artist_id = UnifiedArtist.id "
+      "WHERE UnifiedAlbumUnifiedArtistId.unified_album_id = :albumId")
+  Future<List<UnifiedArtist>> getAlbumArtistIds(int albumId);
 }
