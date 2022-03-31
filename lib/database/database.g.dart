@@ -65,6 +65,8 @@ class _$AppDatabase extends AppDatabase {
 
   UnifiedDataDao? _unifiedDataDaoInstance;
 
+  DirDao? _dirDaoInstance;
+
   Future<sqflite.Database> open(String path, List<Migration> migrations,
       [Callback? callback]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
@@ -98,11 +100,13 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `UnifiedSong` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `lengthMs` INTEGER NOT NULL)');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `UnifiedAlbum` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `trackCount` INTEGER NOT NULL)');
+            'CREATE TABLE IF NOT EXISTS `UnifiedAlbum` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `trackCount` INTEGER NOT NULL, `parent_tree_node_id` INTEGER, FOREIGN KEY (`parent_tree_node_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `UnifiedAlbumEntry` (`album_id` INTEGER NOT NULL, `song_id` INTEGER NOT NULL, `index` INTEGER NOT NULL, FOREIGN KEY (`album_id`) REFERENCES `UnifiedAlbum` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`song_id`) REFERENCES `UnifiedSong` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`album_id`, `index`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `UnifiedArtist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL)');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `DirTreeNode` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `parent_tree_node_id` INTEGER, `name` TEXT NOT NULL, FOREIGN KEY (`parent_tree_node_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
 
         await database.execute(
             'CREATE VIEW IF NOT EXISTS `UnifiedSongRawAlbumId` AS SELECT RawAlbumEntry.album_id as raw_album_id, RawSong.unified_id as unified_song_id FROM RawSong INNER JOIN RawAlbumEntry ON RawSong.id = RawAlbumEntry.song_id WHERE RawSong.unified_id NOT NULL');
@@ -124,6 +128,11 @@ class _$AppDatabase extends AppDatabase {
   UnifiedDataDao get unifiedDataDao {
     return _unifiedDataDaoInstance ??=
         _$UnifiedDataDao(database, changeListener);
+  }
+
+  @override
+  DirDao get dirDao {
+    return _dirDaoInstance ??= _$DirDao(database, changeListener);
   }
 }
 
@@ -296,7 +305,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<List<UnifiedAlbum>> getSongAlbumIds(int songId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM UnifiedAlbum INNER JOIN UnifiedSongUnifiedAlbumId ON UnifiedSongUnifiedAlbumId.unified_album_id = UnifiedAlbum.id WHERE UnifiedSongUnifiedAlbumId.unified_song_id = ?1',
-        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int),
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
         arguments: [songId]);
   }
 
@@ -356,6 +365,108 @@ class _$UnifiedDataDao extends UnifiedDataDao {
           ..database = transaction;
         await transactionDatabase.unifiedDataDao
             .unifyRawArtists(rawIds, unifiedId);
+      });
+    }
+  }
+}
+
+class _$DirDao extends DirDao {
+  _$DirDao(this.database, this.changeListener)
+      : _queryAdapter = QueryAdapter(database),
+        _dirTreeNodeInsertionAdapter = InsertionAdapter(
+            database,
+            'DirTreeNode',
+            (DirTreeNode item) => <String, Object?>{
+                  'id': item.id,
+                  'parent_tree_node_id': item.parentTreeNodeId,
+                  'name': item.name
+                });
+
+  final sqflite.DatabaseExecutor database;
+
+  final StreamController<String> changeListener;
+
+  final QueryAdapter _queryAdapter;
+
+  final InsertionAdapter<DirTreeNode> _dirTreeNodeInsertionAdapter;
+
+  @override
+  Future<List<DirTreeNode>> dirChildrenOfNull() async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM DirTreeNode WHERE parentTreeNodeId = NULL',
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
+            row['name'] as String, row['parent_tree_node_id'] as int?));
+  }
+
+  @override
+  Future<List<UnifiedAlbum>> albumChildrenOfNull() async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedAlbum WHERE parentTreeNodeId = NULL',
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(
+            row['id'] as int,
+            row['title'] as String,
+            row['trackCount'] as int,
+            row['parent_tree_node_id'] as int?));
+  }
+
+  @override
+  Future<List<DirTreeNode>> dirChildrenOf(int parentId) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM DirTreeNode WHERE parentTreeNodeId = ?1',
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
+            row['name'] as String, row['parent_tree_node_id'] as int?),
+        arguments: [parentId]);
+  }
+
+  @override
+  Future<List<UnifiedAlbum>> albumChildrenOf(int parentId) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM UnifiedAlbum WHERE parent_tree_node_id = ?1',
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(
+            row['id'] as int,
+            row['title'] as String,
+            row['trackCount'] as int,
+            row['parent_tree_node_id'] as int?),
+        arguments: [parentId]);
+  }
+
+  @override
+  Future<DirTreeNode?> getById(int id) async {
+    return _queryAdapter.query('SELECT * FROM DirTreeNode WHERE id = ?1',
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
+            row['name'] as String, row['parent_tree_node_id'] as int?),
+        arguments: [id]);
+  }
+
+  @override
+  Future<void> _insertTreeNodeUnchecked(DirTreeNode node) async {
+    await _dirTreeNodeInsertionAdapter.insert(node, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<bool> chainIsAcyclic(DirTreeNode notInsertedNode) async {
+    if (database is sqflite.Transaction) {
+      return super.chainIsAcyclic(notInsertedNode);
+    } else {
+      return (database as sqflite.Database)
+          .transaction<bool>((transaction) async {
+        final transactionDatabase = _$AppDatabase(changeListener)
+          ..database = transaction;
+        return transactionDatabase.dirDao.chainIsAcyclic(notInsertedNode);
+      });
+    }
+  }
+
+  @override
+  Future<bool> insertTreeNode(DirTreeNode notInsertedNode) async {
+    if (database is sqflite.Transaction) {
+      return super.insertTreeNode(notInsertedNode);
+    } else {
+      return (database as sqflite.Database)
+          .transaction<bool>((transaction) async {
+        final transactionDatabase = _$AppDatabase(changeListener)
+          ..database = transaction;
+        return transactionDatabase.dirDao.insertTreeNode(notInsertedNode);
       });
     }
   }

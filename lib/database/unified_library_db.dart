@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:floor/floor.dart';
 
+import 'folder_overlay_db.dart';
 import 'raw_db.dart';
 
 /// This contains Entities/DAOs used to interface with the Unified library
@@ -61,7 +62,12 @@ class UnifiedArtist {
   UnifiedArtist.fromNew(this.name) : this.id = 0;
 }
 
-@entity
+@Entity(foreignKeys: [
+  ForeignKey(
+      childColumns: ['parent_tree_node_id'],
+      parentColumns: ['id'],
+      entity: DirTreeNode),
+])
 class UnifiedAlbum {
   @PrimaryKey(autoGenerate: true)
   final int id;
@@ -69,10 +75,14 @@ class UnifiedAlbum {
   final String title;
   final int trackCount;
 
+  @ColumnInfo(name: "parent_tree_node_id")
+  final int? parentTreeNodeId;
+
   // Used to create from SQL-version
-  UnifiedAlbum(this.id, this.title, this.trackCount);
+  UnifiedAlbum(this.id, this.title, this.trackCount, this.parentTreeNodeId);
   // Used to create from Dart/Flutter side
-  UnifiedAlbum.fromNew(this.title, this.trackCount) : this.id = 0;
+  UnifiedAlbum.fromNew(this.title, this.trackCount, this.parentTreeNodeId)
+      : this.id = 0;
 }
 
 @Entity(foreignKeys: [
