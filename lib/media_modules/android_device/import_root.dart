@@ -17,6 +17,10 @@ class ImportRootState extends Equatable {
     return ImportRootState(selectedRoots: newRoots);
   }
 
+  Future<void> importRootsToDatabase() async {
+    return Future.delayed(Duration(seconds: 10));
+  }
+
   @override
   List<Object?> get props => [selectedRoots];
 }
@@ -59,13 +63,13 @@ class ImportModule extends Module {
 class ImportRootPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Import Music")),
-      body: BlocProvider(
+    return BlocProvider(
         create: (_) => Modular.get<ImportRootBloc>(),
         child: BlocBuilder<ImportRootBloc, ImportRootState>(
-          builder: (context, state) {
-            return ListView.builder(
+            builder: (context, state) {
+          return Scaffold(
+            appBar: AppBar(title: const Text("Import Music")),
+            body: ListView.builder(
               itemCount: state.selectedRoots.length,
               itemBuilder: (context, i) => Container(
                 padding: EdgeInsets.all(8),
@@ -76,32 +80,37 @@ class ImportRootPage extends StatelessWidget {
                   ],
                 ),
               ),
-            );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Modular.to.pushNamed("select_roots"),
-        child: const Icon(Icons.add),
-        tooltip: 'Create',
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        child: Row(
-          children: [
-            // TextButton(
-            //   onPressed: () {},
-            //   child: const Text("Merge Dupes"),
-            // ),
-            // const Spacer(),
-            TextButton(
-              onPressed: () => Modular.to.pushNamed("importing"),
-              child: const Text("Confirm"),
-            )
-          ],
-        ),
-        shape: const CircularNotchedRectangle(),
-      ),
-    );
+            ),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () => Modular.to.pushNamed("select_roots"),
+              child: const Icon(Icons.add),
+              tooltip: 'Create',
+            ),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerDocked,
+            bottomNavigationBar: BottomAppBar(
+              child: Row(
+                children: [
+                  TextButton(
+                    onPressed: () async {
+                      showDialog(
+                        context: context,
+                        builder: (context) => WillPopScope(
+                            child: AlertDialog(
+                                content: const Text("Importing...")),
+                            onWillPop: () async => false),
+                        barrierDismissible: false,
+                      );
+                      await state.importRootsToDatabase();
+                      Modular.to.pop();
+                    },
+                    child: const Text("Import"),
+                  )
+                ],
+              ),
+              shape: const CircularNotchedRectangle(),
+            ),
+          );
+        }));
   }
 }
