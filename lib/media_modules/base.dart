@@ -22,7 +22,6 @@ abstract class MediaModule extends Module {
   String get humanReadableName;
 }
 
-class MediaModuleRoute<T extends MediaModule> extends ModuleRoute {
-  MediaModuleRoute(T mediaModule)
-      : super(mediaModule.mediaModuleID, module: mediaModule);
+ModuleRoute mediaModuleRoute<T extends MediaModule>(T mediaModule) {
+  return ModuleRoute(mediaModule.mediaModuleID, module: mediaModule);
 }

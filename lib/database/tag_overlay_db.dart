@@ -92,21 +92,40 @@ class TagSongJoin {
 @dao
 abstract class TagDao {
   @Query("SELECT * FROM DirTreeNode "
-      "INNER JOIN TagAlbumJoin ON TagAlbumJoin.dir_id = DirTreeNode.id "
-      "WHERE TagAlbumJoin.tag_id IN (:tagIds)")
+      "INNER JOIN TagDirJoin ON TagDirJoin.dir_id = DirTreeNode.id "
+      "WHERE TagDirJoin.tag_id IN (:tagIds)")
   Future<List<DirTreeNode>> getDirectlyTaggedDirs(List<int> tagIds);
+  @Query("SELECT * FROM Tag "
+      "INNER JOIN TagDirJoin ON TagDirJoin.tag_id = Tag.id "
+      "WHERE TagDirJoin.dir_id = :dirId")
+  Future<List<Tag>> getDirDirectTags(int dirId);
+
   @Query("SELECT * FROM UnifiedAlbum "
       "INNER JOIN TagAlbumJoin ON TagAlbumJoin.album_id = UnifiedAlbum.id "
       "WHERE TagAlbumJoin.tag_id IN (:tagIds)")
   Future<List<UnifiedAlbum>> getDirectlyTaggedAlbums(List<int> tagIds);
+  @Query("SELECT * FROM Tag "
+      "INNER JOIN TagAlbumJoin ON TagAlbumJoin.tag_id = Tag.id "
+      "WHERE TagAlbumJoin.album_id = :albumId")
+  Future<List<Tag>> getAlbumDirectTags(int albumId);
+
   @Query("SELECT * FROM UnifiedArtist "
       "INNER JOIN TagArtistJoin ON TagArtistJoin.artist_id = UnifiedArtist.id "
       "WHERE TagArtistJoin.tag_id IN (:tagIds)")
   Future<List<UnifiedArtist>> getDirectlyTaggedArtists(List<int> tagIds);
+  @Query("SELECT * FROM Tag "
+      "INNER JOIN TagArtistJoin ON TagArtistJoin.tag_id = Tag.id "
+      "WHERE TagArtistJoin.artist_id = :artistId")
+  Future<List<Tag>> getArtistDirectTags(int artistId);
+
   @Query("SELECT * FROM UnifiedSong "
       "INNER JOIN TagSongJoin ON TagSongJoin.song_id = UnifiedSong.id "
       "WHERE TagSongJoin.tag_id IN (:tagIds)")
   Future<List<UnifiedSong>> getDirectlyTaggedSongs(List<int> tagIds);
+  @Query("SELECT * FROM Tag "
+      "INNER JOIN TagSongJoin ON TagSongJoin.tag_id = Tag.id "
+      "WHERE TagSongJoin.song_id = :songId")
+  Future<List<Tag>> getSongDirectTags(int songId);
 
   @transaction
   Future<Set<int>> getAllTaggedUnifiedSongIds(
@@ -119,7 +138,7 @@ abstract class TagDao {
         await unifiedDataDao.getArtistsAlbums(artistIds);
     var albumIds = albums.map((album) => album.id).toList(growable: false);
     var songs = await getDirectlyTaggedSongs(tagIds) +
-        await unifiedDataDao.getAlbumSongs(albumIds) +
+        await unifiedDataDao.getAlbumsSongs(albumIds) +
         await unifiedDataDao.getArtistsSongs(artistIds);
 
     return songs.map((song) => song.id).toSet();

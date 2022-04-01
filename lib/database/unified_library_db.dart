@@ -54,12 +54,12 @@ class UnifiedArtist {
   @PrimaryKey(autoGenerate: true)
   final int id;
 
-  final String name;
+  final String title;
 
   // Used to create from SQL-version
-  UnifiedArtist(this.id, this.name);
+  UnifiedArtist(this.id, this.title);
   // Used to create from Dart/Flutter side
-  UnifiedArtist.fromNew(this.name) : this.id = 0;
+  UnifiedArtist.fromNew(this.title) : this.id = 0;
 }
 
 @Entity(foreignKeys: [
@@ -221,6 +221,13 @@ class UnifiedAlbumUnifiedArtistId {
 
 @dao
 abstract class UnifiedDataDao {
+  @Query("SELECT * FROM UnifiedSong WHERE id = :songId")
+  Future<UnifiedSong?> getUnifiedSong(int songId);
+  @Query("SELECT * FROM UnifiedAlbum WHERE id = :albumId")
+  Future<UnifiedAlbum?> getUnifiedAlbum(int albumId);
+  @Query("SELECT * FROM UnifiedArtist WHERE id = :artistId")
+  Future<UnifiedArtist?> getUnifiedArtist(int artistId);
+
   @Query("SELECT * FROM RawSong WHERE unified_id = :songId")
   Future<List<RawSong>> getRawIdsForUnifiedSong(int songId);
   @Query(
@@ -359,5 +366,12 @@ abstract class UnifiedDataDao {
       "INNER JOIN UnifiedAlbumEntry "
       "ON UnifiedAlbumEntry.song_id = UnifiedSong.id "
       "WHERE UnifiedAlbumEntry.album_id IN (:albumIds)")
-  Future<List<UnifiedSong>> getAlbumSongs(List<int> albumIds);
+  Future<List<UnifiedSong>> getAlbumsSongs(List<int> albumIds);
+
+  @Query("SELECT * FROM UnifiedSong "
+      "INNER JOIN UnifiedAlbumEntry "
+      "ON UnifiedAlbumEntry.song_id = UnifiedSong.id "
+      "WHERE UnifiedAlbumEntry.album_id = :albumId "
+      "ORDER BY UnifiedAlbumEntry.index")
+  Future<List<UnifiedSong>> getAlbumSongs(int albumId);
 }

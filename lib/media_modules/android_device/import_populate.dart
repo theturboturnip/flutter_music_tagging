@@ -210,7 +210,7 @@ class AlbumListItem extends StatelessWidget {
             Checkbox(
               value: selected,
               onChanged: (bool? selected) {
-                context.read<ImportPopulateBloc>().add(event);
+                ReadContext(context).read<ImportPopulateBloc>().add(event);
               },
             ),
           ],
@@ -227,7 +227,7 @@ class _SelectedAlbumsListState extends State<SelectedAlbumsList> {
   @override
   void initState() {
     super.initState();
-    _importBloc = context.read<ImportPopulateBloc>();
+    _importBloc = ReadContext(context).read<ImportPopulateBloc>();
   }
 
   @override
@@ -304,7 +304,7 @@ class ImportPopulatePage extends StatelessWidget {
               actions: [
                 PopupMenuButton<AlbumSortType>(
                   icon: Icon(Icons.sort_sharp),
-                  onSelected: (sortType) => context
+                  onSelected: (sortType) => ReadContext(context)
                       .read<ImportPopulateBloc>()
                       .add(ResortEvent(sortType)),
                   itemBuilder: (BuildContext context) =>
@@ -337,19 +337,19 @@ class ImportPopulatePage extends StatelessWidget {
                     switch (selected) {
                       case true:
                         // original was false => empty => select all
-                        context
+                        ReadContext(context)
                             .read<ImportPopulateBloc>()
                             .add(SelectionGroupEvent.add());
                         break;
                       case false:
                         // orignal was null => partially full => select all
-                        context
+                        ReadContext(context)
                             .read<ImportPopulateBloc>()
                             .add(SelectionGroupEvent.add());
                         break;
                       case null:
                         // original was true => full => deselect all
-                        context
+                        ReadContext(context)
                             .read<ImportPopulateBloc>()
                             .add(SelectionGroupEvent.remove());
                         break;

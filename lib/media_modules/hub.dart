@@ -19,12 +19,11 @@ class MediaModuleHub extends Module {
 
   @override
   List<ModularRoute> get routes =>
-      modules.map((m) => MediaModuleRoute(m)).toList();
+      modules.map((m) => mediaModuleRoute(m)).toList();
 }
 
-class MediaModuleHubRoute extends ModuleRoute {
-  MediaModuleHubRoute()
-      : super(MediaModule.routePrefix, module: MediaModuleHub());
+ModuleRoute mediaModuleHubRoute() {
+  return ModuleRoute(MediaModule.routePrefix, module: MediaModuleHub());
 }
 
 class ModuleImportListWidget extends StatelessWidget {

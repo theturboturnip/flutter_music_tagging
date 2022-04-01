@@ -196,7 +196,7 @@ packages:
       name: fast_immutable_collections
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "5.1.3"
+    version: "7.2.1"
   ffi:
     dependency: transitive
     description:
@@ -264,7 +264,7 @@ packages:
       name: flutter_modular
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "3.4.1+1"
+    version: "4.5.0"
   flutter_modular_annotations:
     dependency: transitive
     description:
@@ -382,6 +382,20 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.1"
+  modular_core:
+    dependency: transitive
+    description:
+      name: modular_core
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.2.1"
+  modular_interfaces:
+    dependency: transitive
+    description:
+      name: modular_interfaces
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.4"
   nested:
     dependency: transitive
     description:
@@ -453,7 +467,7 @@ packages:
     source: hosted
     version: "1.5.0"
   provider:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: provider
       url: "https://pub.dartlang.org"

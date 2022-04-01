@@ -28,14 +28,14 @@ class DirTreeNode {
 
 @dao
 abstract class DirDao {
-  @Query("SELECT DISTINCT * FROM DirTreeNode WHERE parentTreeNodeId = NULL")
+  @Query("SELECT DISTINCT * FROM DirTreeNode WHERE parent_tree_node_id = NULL")
   Future<List<DirTreeNode>> dirChildrenOfNull();
   @Query("SELECT DISTINCT * FROM UnifiedAlbum "
-      "WHERE parentTreeNodeId = NULL")
+      "WHERE parent_tree_node_id = NULL")
   Future<List<UnifiedAlbum>> albumChildrenOfNull();
 
   @Query(
-      "SELECT DISTINCT * FROM DirTreeNode WHERE parentTreeNodeId = :parentId")
+      "SELECT DISTINCT * FROM DirTreeNode WHERE parent_tree_node_id = :parentId")
   Future<List<DirTreeNode>> dirChildrenOf(int parentId);
   @Query("SELECT DISTINCT * FROM UnifiedAlbum "
       "WHERE parent_tree_node_id = :parentId")

@@ -77,7 +77,9 @@ class PermissionsPage extends StatelessWidget {
                 onPressed: () async {
                   var status = await Permission.storage.request();
                   if (status.isGranted) {
-                    context.read<PermissionBloc>().add(PermissionGetStorage());
+                    ReadContext(context)
+                        .read<PermissionBloc>()
+                        .add(PermissionGetStorage());
                   }
                 },
                 child: const Text("Grant Storage")));

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:splashscreen/splashscreen.dart';
 
+import 'library.dart';
 import 'media_modules/hub.dart';
 import 'permissions.dart';
 
@@ -25,11 +26,12 @@ class AppModule extends Module {
   @override
   List<ModularRoute> get routes => [
         // Top-level route hub for all connected media modules
-        MediaModuleHubRoute(),
+        mediaModuleHubRoute(),
 
         ChildRoute("/splash", child: (_, args) => SplashWidget()),
         ModuleRoute("/permissions", module: PermissionModule()),
-        ChildRoute("/home", child: (_, args) => HomeWidget()),
+        ModuleRoute("/library", module: LibraryModule()),
+        ChildRoute("/", child: (_, args) => HomeWidget()),
         ChildRoute("/import", child: (_, args) => ModuleImportListWidget()),
       ];
 }
@@ -49,7 +51,7 @@ class _SplashState extends State<SplashWidget> {
   void lookupPermissions(Duration timestamp) async {
     var route = "/permissions";
     if (await hasAllPermissions()) {
-      route = "/home";
+      route = "/";
     }
     Modular.to.navigate(route);
   }
@@ -81,6 +83,12 @@ class HomeWidget extends StatelessWidget {
                 Modular.to.pushNamed('/import');
               },
               child: const Text("Import Music"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Modular.to.pushNamed('/library/root/dir');
+              },
+              child: const Text("Browse Library"),
             ),
           ],
         ),

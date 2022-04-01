@@ -36,7 +36,18 @@ part 'database.g.dart'; // the generated code will be there
   UnifiedAlbumRawArtistId,
   UnifiedAlbumUnifiedArtistId,
 ])
-abstract class AppDatabase extends FloorDatabase {
+abstract class AppDatabase extends FloorDatabase implements DatabaseRepository {
+  RawDataDao get rawDataDao;
+  UnifiedDataDao get unifiedDataDao;
+  DirDao get dirDao;
+  TagDao get tagDao;
+
+  static Future<AppDatabase> getConnection() {
+    return $FloorAppDatabase.databaseBuilder('app_database.db').build();
+  }
+}
+
+abstract class DatabaseRepository {
   RawDataDao get rawDataDao;
   UnifiedDataDao get unifiedDataDao;
   DirDao get dirDao;
