@@ -56,9 +56,10 @@ class _SplashState extends State<SplashWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return new SplashScreen(
+    return SplashScreen.timer(
+        seconds: 10,
         title: new Text(
-          'TurnipTagging',
+          'Turnip Tagging',
           style: new TextStyle(fontWeight: FontWeight.bold, fontSize: 20.0),
         ),
         backgroundColor: Colors.white,
@@ -77,7 +78,7 @@ class HomeWidget extends StatelessWidget {
           children: [
             ElevatedButton(
               onPressed: () async {
-                Modular.to.navigate('/import');
+                Modular.to.pushNamed('/import');
               },
               child: const Text("Import Music"),
             ),

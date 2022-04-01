@@ -102,7 +102,7 @@ class ImportRootPage extends StatelessWidget {
                         barrierDismissible: false,
                       );
                       await state.importRootsToDatabase();
-                      Modular.to.pop();
+                      Modular.to.popUntil(ModalRoute.withName('/home'));
                     },
                     child: const Text("Import"),
                   )
