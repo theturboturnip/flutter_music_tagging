@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:floor/floor.dart';
 import 'package:flutter_music_tagging/database/backend_id.dart';
+import 'package:flutter_music_tagging/database/pre_import.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
 
 import 'raw_db.dart';
@@ -41,9 +43,35 @@ abstract class AppDatabase extends FloorDatabase implements DatabaseRepository {
   UnifiedDataDao get unifiedDataDao;
   DirDao get dirDao;
   TagDao get tagDao;
+  ImporterDao get importerDao;
 
   static Future<AppDatabase> getConnection() {
     return $FloorAppDatabase.databaseBuilder('app_database.db').build();
+    // return $FloorAppDatabase.inMemoryDatabaseBuilder().build();
+  }
+
+  Future<void> deleteAll() async {
+    IList<String> tables = [
+      RawSong,
+      RawSongArtist,
+      RawAlbum,
+      RawAlbumArtist,
+      RawAlbumEntry,
+      RawArtist,
+      UnifiedSong,
+      UnifiedAlbum,
+      UnifiedAlbumEntry,
+      UnifiedArtist,
+      DirTreeNode,
+      Tag,
+      TagDirJoin,
+      TagAlbumJoin,
+      TagArtistJoin,
+      TagSongJoin,
+    ].map((e) => e.toString()).toIList();
+    for (var table in tables) {
+      await database.delete(table, where: null);
+    }
   }
 }
 
@@ -52,4 +80,5 @@ abstract class DatabaseRepository {
   UnifiedDataDao get unifiedDataDao;
   DirDao get dirDao;
   TagDao get tagDao;
+  ImporterDao get importerDao;
 }

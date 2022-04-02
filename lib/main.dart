@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter_music_tagging/database/database.dart';
 import 'package:splashscreen/splashscreen.dart';
 
 import 'library.dart';
@@ -90,6 +91,13 @@ class HomeWidget extends StatelessWidget {
               },
               child: const Text("Browse Library"),
             ),
+            ElevatedButton(
+              onPressed: () async {
+                final db = await AppDatabase.getConnection();
+                db.deleteAll();
+              },
+              child: const Text("Clear DB"),
+            )
           ],
         ),
       ),

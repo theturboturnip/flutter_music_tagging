@@ -12,7 +12,7 @@ import 'unified_library_db.dart';
 ])
 class RawSong {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
 
   @ColumnInfo(name: "backend_id")
   final BackendId backendId;
@@ -27,7 +27,7 @@ class RawSong {
   RawSong(this.id, this.backendId, this.unifiedId, this.title, this.lengthMs);
   // Used to create from Dart/Flutter side
   RawSong.fromNew(this.backendId, this.unifiedId, this.title, this.lengthMs)
-      : this.id = 0;
+      : this.id = null;
 }
 
 @Entity(foreignKeys: [
@@ -61,7 +61,7 @@ class RawSongArtist {
 ])
 class RawAlbum {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
 
   @ColumnInfo(name: "backend_id")
   final BackendId backendId;
@@ -76,7 +76,7 @@ class RawAlbum {
       this.id, this.backendId, this.unifiedId, this.title, this.trackCount);
   // Used to create from Dart/Flutter side
   RawAlbum.fromNew(this.backendId, this.unifiedId, this.title, this.trackCount)
-      : this.id = 0;
+      : this.id = null;
 }
 
 @Entity(foreignKeys: [
@@ -139,7 +139,7 @@ class RawAlbumArtist {
 ])
 class RawArtist {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
 
   @ColumnInfo(name: "backend_id")
   final BackendId backendId;
@@ -151,7 +151,7 @@ class RawArtist {
 
   RawArtist(this.id, this.backendId, this.unifiedId, this.name);
   // Used to create from Dart/Flutter side
-  RawArtist.fromNew(this.backendId, this.unifiedId, this.name) : this.id = 0;
+  RawArtist.fromNew(this.backendId, this.unifiedId, this.name) : this.id = null;
 }
 
 @dao

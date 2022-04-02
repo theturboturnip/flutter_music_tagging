@@ -3,6 +3,10 @@ import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter_music_tagging/database/backend_id.dart';
+import 'package:flutter_music_tagging/database/database.dart';
+import 'package:flutter_music_tagging/database/pre_import.dart';
+import 'package:flutter_audio_query/flutter_audio_query.dart' as AndroidAudio;
 
 import 'common.dart';
 import 'import_populate.dart';
@@ -18,7 +22,47 @@ class ImportRootState extends Equatable {
   }
 
   Future<void> importRootsToDatabase() async {
-    return Future.delayed(Duration(seconds: 10));
+    // Generate ImportData from AndroidAlbumInfo
+    final androidQ = AndroidAudio.FlutterAudioQuery();
+    final db = AppDatabase.getConnection();
+
+    // TODO how tf do you get artists
+
+    // Generate list of songs
+    // Foreach album, look up its songs, then convert to ImportSong
+    IMap<BackendId, IList<AndroidAudio.SongInfo>> albumAndroidTracklists =
+        IMap.fromEntries(
+            await Future.wait(this.selectedRoots.map((album) async => MapEntry(
+                  album.id.id,
+                  (await androidQ.getSongsFromAlbum(
+                          albumId: album.id.id.backendId))
+                      .toIList(),
+                ))));
+    IList<ImportSong> songList = albumAndroidTracklists
+        .mapTo((key, value) => value)
+        .expand((element) => element)
+        .map((androidSong) => ImportSong(BackendId("android", androidSong.id),
+            androidSong.title, 0, <BackendId>[].toIList()))
+        .toIList();
+    IMap<BackendId, ImportSong> songs = IMap.fromEntries(
+        songList.map((song) => MapEntry(song.backendId, song)));
+
+    IMap<BackendId, ImportAlbum> albums =
+        IMap.fromEntries(this.selectedRoots.map((androidInfo) => MapEntry(
+              androidInfo.id.id,
+              ImportAlbum(
+                  androidInfo.id.id,
+                  androidInfo.title,
+                  albumAndroidTracklists[androidInfo.id.id]!
+                      .map(
+                          (androidSong) => BackendId("android", androidSong.id))
+                      .toIList(),
+                  <BackendId>[].toIList()),
+            )));
+
+    var data = ImportData(songs, albums, <BackendId, ImportArtist>{}.toIMap());
+
+    await (await db).importerDao.importData(data);
   }
 
   @override

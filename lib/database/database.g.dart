@@ -69,6 +69,8 @@ class _$AppDatabase extends AppDatabase {
 
   TagDao? _tagDaoInstance;
 
+  ImporterDao? _importerDaoInstance;
+
   Future<sqflite.Database> open(String path, List<Migration> migrations,
       [Callback? callback]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
@@ -88,29 +90,29 @@ class _$AppDatabase extends AppDatabase {
       },
       onCreate: (database, version) async {
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `RawSong` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `backend_id` TEXT NOT NULL, `unified_id` INTEGER, `title` TEXT NOT NULL, `lengthMs` INTEGER NOT NULL, FOREIGN KEY (`unified_id`) REFERENCES `UnifiedSong` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
+            'CREATE TABLE IF NOT EXISTS `RawSong` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `backend_id` TEXT NOT NULL, `unified_id` INTEGER, `title` TEXT NOT NULL, `lengthMs` INTEGER NOT NULL, FOREIGN KEY (`unified_id`) REFERENCES `UnifiedSong` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `RawSongArtist` (`song_id` INTEGER NOT NULL, `artist_id` INTEGER NOT NULL, FOREIGN KEY (`song_id`) REFERENCES `RawSong` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`artist_id`) REFERENCES `RawArtist` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`song_id`, `artist_id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `RawAlbum` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `backend_id` TEXT NOT NULL, `unified_id` INTEGER, `title` TEXT NOT NULL, `trackCount` INTEGER NOT NULL, FOREIGN KEY (`unified_id`) REFERENCES `UnifiedAlbum` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
+            'CREATE TABLE IF NOT EXISTS `RawAlbum` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `backend_id` TEXT NOT NULL, `unified_id` INTEGER, `title` TEXT NOT NULL, `trackCount` INTEGER NOT NULL, FOREIGN KEY (`unified_id`) REFERENCES `UnifiedAlbum` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `RawAlbumArtist` (`album_id` INTEGER NOT NULL, `artist_id` INTEGER NOT NULL, FOREIGN KEY (`album_id`) REFERENCES `RawAlbum` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`artist_id`) REFERENCES `RawArtist` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`album_id`, `artist_id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `RawAlbumEntry` (`album_id` INTEGER NOT NULL, `song_id` INTEGER NOT NULL, `index` INTEGER NOT NULL, FOREIGN KEY (`album_id`) REFERENCES `RawAlbum` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`song_id`) REFERENCES `RawSong` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`album_id`, `index`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `RawArtist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `backend_id` TEXT NOT NULL, `unified_id` INTEGER, `name` TEXT NOT NULL, FOREIGN KEY (`unified_id`) REFERENCES `UnifiedArtist` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
+            'CREATE TABLE IF NOT EXISTS `RawArtist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `backend_id` TEXT NOT NULL, `unified_id` INTEGER, `name` TEXT NOT NULL, FOREIGN KEY (`unified_id`) REFERENCES `UnifiedArtist` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `UnifiedSong` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `lengthMs` INTEGER NOT NULL)');
+            'CREATE TABLE IF NOT EXISTS `UnifiedSong` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `title` TEXT NOT NULL, `lengthMs` INTEGER NOT NULL)');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `UnifiedAlbum` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `trackCount` INTEGER NOT NULL, `parent_tree_node_id` INTEGER, FOREIGN KEY (`parent_tree_node_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
+            'CREATE TABLE IF NOT EXISTS `UnifiedAlbum` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `title` TEXT NOT NULL, `trackCount` INTEGER NOT NULL, `parent_tree_node_id` INTEGER, FOREIGN KEY (`parent_tree_node_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `UnifiedAlbumEntry` (`album_id` INTEGER NOT NULL, `song_id` INTEGER NOT NULL, `index` INTEGER NOT NULL, FOREIGN KEY (`album_id`) REFERENCES `UnifiedAlbum` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`song_id`) REFERENCES `UnifiedSong` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`album_id`, `index`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `UnifiedArtist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL)');
+            'CREATE TABLE IF NOT EXISTS `UnifiedArtist` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `title` TEXT NOT NULL)');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `DirTreeNode` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `parent_tree_node_id` INTEGER, `name` TEXT NOT NULL, FOREIGN KEY (`parent_tree_node_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
+            'CREATE TABLE IF NOT EXISTS `DirTreeNode` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `parent_tree_node_id` INTEGER, `name` TEXT NOT NULL, FOREIGN KEY (`parent_tree_node_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION)');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `Tag` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `hexRGBA` INTEGER NOT NULL)');
+            'CREATE TABLE IF NOT EXISTS `Tag` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `name` TEXT NOT NULL, `hexRGBA` INTEGER NOT NULL)');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `TagDirJoin` (`tag_id` INTEGER NOT NULL, `dir_id` INTEGER NOT NULL, FOREIGN KEY (`tag_id`) REFERENCES `Tag` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, FOREIGN KEY (`dir_id`) REFERENCES `DirTreeNode` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION, PRIMARY KEY (`tag_id`, `dir_id`))');
         await database.execute(
@@ -159,6 +161,11 @@ class _$AppDatabase extends AppDatabase {
   TagDao get tagDao {
     return _tagDaoInstance ??= _$TagDao(database, changeListener);
   }
+
+  @override
+  ImporterDao get importerDao {
+    return _importerDaoInstance ??= _$ImporterDao(database, changeListener);
+  }
 }
 
 class _$RawDataDao extends RawDataDao {
@@ -175,7 +182,7 @@ class _$RawDataDao extends RawDataDao {
   Future<RawAlbum?> getRawAlbum(int id) async {
     return _queryAdapter.query('SELECT * FROM RawAlbum where albumId = ?1',
         mapper: (Map<String, Object?> row) => RawAlbum(
-            row['id'] as int,
+            row['id'] as int?,
             _backendIdConverter.decode(row['backend_id'] as String),
             row['unified_id'] as int?,
             row['title'] as String,
@@ -198,7 +205,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<UnifiedSong?> getUnifiedSong(int songId) async {
     return _queryAdapter.query('SELECT * FROM UnifiedSong WHERE id = ?1',
         mapper: (Map<String, Object?> row) => UnifiedSong(
-            row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+            row['id'] as int?, row['title'] as String, row['lengthMs'] as int),
         arguments: [songId]);
   }
 
@@ -206,7 +213,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<UnifiedAlbum?> getUnifiedAlbum(int albumId) async {
     return _queryAdapter.query('SELECT * FROM UnifiedAlbum WHERE id = ?1',
         mapper: (Map<String, Object?> row) => UnifiedAlbum(
-            row['id'] as int,
+            row['id'] as int?,
             row['title'] as String,
             row['trackCount'] as int,
             row['parent_tree_node_id'] as int?),
@@ -217,7 +224,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<UnifiedArtist?> getUnifiedArtist(int artistId) async {
     return _queryAdapter.query('SELECT * FROM UnifiedArtist WHERE id = ?1',
         mapper: (Map<String, Object?> row) =>
-            UnifiedArtist(row['id'] as int, row['title'] as String),
+            UnifiedArtist(row['id'] as int?, row['title'] as String),
         arguments: [artistId]);
   }
 
@@ -226,7 +233,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
     return _queryAdapter.queryList(
         'SELECT * FROM RawSong WHERE unified_id = ?1',
         mapper: (Map<String, Object?> row) => RawSong(
-            row['id'] as int,
+            row['id'] as int?,
             _backendIdConverter.decode(row['backend_id'] as String),
             row['unified_id'] as int?,
             row['title'] as String,
@@ -246,7 +253,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
             _sqliteVariablesForSongIds +
             ') AND backendId LIKE ?1 || \'\$%\'',
         mapper: (Map<String, Object?> row) => RawSong(
-            row['id'] as int,
+            row['id'] as int?,
             _backendIdConverter.decode(row['backend_id'] as String),
             row['unified_id'] as int?,
             row['title'] as String,
@@ -259,7 +266,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
     return _queryAdapter.queryList(
         'SELECT * FROM RawAlbum WHERE unified_id = ?1',
         mapper: (Map<String, Object?> row) => RawAlbum(
-            row['id'] as int,
+            row['id'] as int?,
             _backendIdConverter.decode(row['backend_id'] as String),
             row['unified_id'] as int?,
             row['title'] as String,
@@ -272,7 +279,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
     return _queryAdapter.queryList(
         'SELECT * FROM RawArtist WHERE unified_id = ?1',
         mapper: (Map<String, Object?> row) => RawArtist(
-            row['id'] as int,
+            row['id'] as int?,
             _backendIdConverter.decode(row['backend_id'] as String),
             row['unified_id'] as int?,
             row['name'] as String),
@@ -291,7 +298,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<List<RawSong>> getRawAlbumSongs(int rawId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM RawSong INNER JOIN RawAlbumEntry ON RawSong.id = RawAlbumEntry.song_id WHERE RawAlbumEntry.album_id = ?1 ORDER BY RawAlbumEntry.index',
-        mapper: (Map<String, Object?> row) => RawSong(row['id'] as int, _backendIdConverter.decode(row['backend_id'] as String), row['unified_id'] as int?, row['title'] as String, row['lengthMs'] as int),
+        mapper: (Map<String, Object?> row) => RawSong(row['id'] as int?, _backendIdConverter.decode(row['backend_id'] as String), row['unified_id'] as int?, row['title'] as String, row['lengthMs'] as int),
         arguments: [rawId]);
   }
 
@@ -377,7 +384,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<List<UnifiedAlbum>> getSongAlbumIds(int songId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM UnifiedAlbum INNER JOIN UnifiedSongUnifiedAlbumId ON UnifiedSongUnifiedAlbumId.unified_album_id = UnifiedAlbum.id WHERE UnifiedSongUnifiedAlbumId.unified_song_id IN ?1',
-        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int?, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
         arguments: [songId]);
   }
 
@@ -385,7 +392,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<List<UnifiedArtist>> getSongArtistIds(int songId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM UnifiedArtist INNER JOIN UnifiedSongUnifiedArtistId ON UnifiedSongUnifiedArtistId.unified_artist_id = UnifiedArtist.id WHERE UnifiedSongUnifiedArtistId.unified_song_id = ?1',
-        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int, row['title'] as String),
+        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int?, row['title'] as String),
         arguments: [songId]);
   }
 
@@ -399,7 +406,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
         'SELECT DISTINCT * FROM UnifiedSong INNER JOIN UnifiedSongUnifiedArtistId ON UnifiedSongUnifiedArtistId.unified_song_id = UnifiedSong.id WHERE UnifiedSongUnifiedArtistId.unified_artist_id IN (' +
             _sqliteVariablesForArtistIds +
             ')',
-        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int?, row['title'] as String, row['lengthMs'] as int),
         arguments: [...artistIds]);
   }
 
@@ -407,7 +414,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<List<UnifiedArtist>> getAlbumArtistIds(int albumId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM UnifiedArtist INNER JOIN UnifiedAlbumUnifiedArtistId ON UnifiedAlbumUnifiedArtistId.unified_artist_id = UnifiedArtist.id WHERE UnifiedAlbumUnifiedArtistId.unified_album_id = ?1',
-        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int, row['title'] as String),
+        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int?, row['title'] as String),
         arguments: [albumId]);
   }
 
@@ -421,7 +428,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
         'SELECT DISTINCT * FROM UnifiedAlbum INNER JOIN UnifiedAlbumUnifiedArtistId ON UnifiedAlbumUnifiedArtistId.unified_album_id = UnifiedAlbum.id WHERE UnifiedAlbumUnifiedArtistId.unified_artist_id IN (' +
             _sqliteVariablesForArtistIds +
             ')',
-        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int?, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
         arguments: [...artistIds]);
   }
 
@@ -435,7 +442,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
         'SELECT * FROM UnifiedSong INNER JOIN UnifiedAlbumEntry ON UnifiedAlbumEntry.song_id = UnifiedSong.id WHERE UnifiedAlbumEntry.album_id IN (' +
             _sqliteVariablesForAlbumIds +
             ')',
-        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int?, row['title'] as String, row['lengthMs'] as int),
         arguments: [...albumIds]);
   }
 
@@ -443,7 +450,7 @@ class _$UnifiedDataDao extends UnifiedDataDao {
   Future<List<UnifiedSong>> getAlbumSongs(int albumId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM UnifiedSong INNER JOIN UnifiedAlbumEntry ON UnifiedAlbumEntry.song_id = UnifiedSong.id WHERE UnifiedAlbumEntry.album_id = ?1 ORDER BY UnifiedAlbumEntry.index',
-        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int?, row['title'] as String, row['lengthMs'] as int),
         arguments: [albumId]);
   }
 
@@ -532,7 +539,7 @@ class _$DirDao extends DirDao {
   Future<List<DirTreeNode>> dirChildrenOfNull() async {
     return _queryAdapter.queryList(
         'SELECT DISTINCT * FROM DirTreeNode WHERE parent_tree_node_id = NULL',
-        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int?,
             row['name'] as String, row['parent_tree_node_id'] as int?));
   }
 
@@ -541,7 +548,7 @@ class _$DirDao extends DirDao {
     return _queryAdapter.queryList(
         'SELECT DISTINCT * FROM UnifiedAlbum WHERE parent_tree_node_id = NULL',
         mapper: (Map<String, Object?> row) => UnifiedAlbum(
-            row['id'] as int,
+            row['id'] as int?,
             row['title'] as String,
             row['trackCount'] as int,
             row['parent_tree_node_id'] as int?));
@@ -551,7 +558,7 @@ class _$DirDao extends DirDao {
   Future<List<DirTreeNode>> dirChildrenOf(int parentId) async {
     return _queryAdapter.queryList(
         'SELECT DISTINCT * FROM DirTreeNode WHERE parent_tree_node_id = ?1',
-        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int?,
             row['name'] as String, row['parent_tree_node_id'] as int?),
         arguments: [parentId]);
   }
@@ -561,7 +568,7 @@ class _$DirDao extends DirDao {
     return _queryAdapter.queryList(
         'SELECT DISTINCT * FROM UnifiedAlbum WHERE parent_tree_node_id = ?1',
         mapper: (Map<String, Object?> row) => UnifiedAlbum(
-            row['id'] as int,
+            row['id'] as int?,
             row['title'] as String,
             row['trackCount'] as int,
             row['parent_tree_node_id'] as int?),
@@ -579,7 +586,7 @@ class _$DirDao extends DirDao {
             _sqliteVariablesForParentIds +
             ')',
         mapper: (Map<String, Object?> row) => UnifiedAlbum(
-            row['id'] as int,
+            row['id'] as int?,
             row['title'] as String,
             row['trackCount'] as int,
             row['parent_tree_node_id'] as int?),
@@ -589,7 +596,7 @@ class _$DirDao extends DirDao {
   @override
   Future<DirTreeNode?> getById(int id) async {
     return _queryAdapter.query('SELECT * FROM DirTreeNode WHERE id = ?1',
-        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int,
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int?,
             row['name'] as String, row['parent_tree_node_id'] as int?),
         arguments: [id]);
   }
@@ -663,7 +670,7 @@ class _$TagDao extends TagDao {
         'SELECT * FROM DirTreeNode INNER JOIN TagDirJoin ON TagDirJoin.dir_id = DirTreeNode.id WHERE TagDirJoin.tag_id IN (' +
             _sqliteVariablesForTagIds +
             ')',
-        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int, row['name'] as String, row['parent_tree_node_id'] as int?),
+        mapper: (Map<String, Object?> row) => DirTreeNode(row['id'] as int?, row['name'] as String, row['parent_tree_node_id'] as int?),
         arguments: [...tagIds]);
   }
 
@@ -671,7 +678,7 @@ class _$TagDao extends TagDao {
   Future<List<Tag>> getDirDirectTags(int dirId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM Tag INNER JOIN TagDirJoin ON TagDirJoin.tag_id = Tag.id WHERE TagDirJoin.dir_id = ?1',
-        mapper: (Map<String, Object?> row) => Tag(row['id'] as int, row['name'] as String, row['hexRGBA'] as int),
+        mapper: (Map<String, Object?> row) => Tag(row['id'] as int?, row['name'] as String, row['hexRGBA'] as int),
         arguments: [dirId]);
   }
 
@@ -685,7 +692,7 @@ class _$TagDao extends TagDao {
         'SELECT * FROM UnifiedAlbum INNER JOIN TagAlbumJoin ON TagAlbumJoin.album_id = UnifiedAlbum.id WHERE TagAlbumJoin.tag_id IN (' +
             _sqliteVariablesForTagIds +
             ')',
-        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
+        mapper: (Map<String, Object?> row) => UnifiedAlbum(row['id'] as int?, row['title'] as String, row['trackCount'] as int, row['parent_tree_node_id'] as int?),
         arguments: [...tagIds]);
   }
 
@@ -693,7 +700,7 @@ class _$TagDao extends TagDao {
   Future<List<Tag>> getAlbumDirectTags(int albumId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM Tag INNER JOIN TagAlbumJoin ON TagAlbumJoin.tag_id = Tag.id WHERE TagAlbumJoin.album_id = ?1',
-        mapper: (Map<String, Object?> row) => Tag(row['id'] as int, row['name'] as String, row['hexRGBA'] as int),
+        mapper: (Map<String, Object?> row) => Tag(row['id'] as int?, row['name'] as String, row['hexRGBA'] as int),
         arguments: [albumId]);
   }
 
@@ -707,7 +714,7 @@ class _$TagDao extends TagDao {
         'SELECT * FROM UnifiedArtist INNER JOIN TagArtistJoin ON TagArtistJoin.artist_id = UnifiedArtist.id WHERE TagArtistJoin.tag_id IN (' +
             _sqliteVariablesForTagIds +
             ')',
-        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int, row['title'] as String),
+        mapper: (Map<String, Object?> row) => UnifiedArtist(row['id'] as int?, row['title'] as String),
         arguments: [...tagIds]);
   }
 
@@ -715,7 +722,7 @@ class _$TagDao extends TagDao {
   Future<List<Tag>> getArtistDirectTags(int artistId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM Tag INNER JOIN TagArtistJoin ON TagArtistJoin.tag_id = Tag.id WHERE TagArtistJoin.artist_id = ?1',
-        mapper: (Map<String, Object?> row) => Tag(row['id'] as int, row['name'] as String, row['hexRGBA'] as int),
+        mapper: (Map<String, Object?> row) => Tag(row['id'] as int?, row['name'] as String, row['hexRGBA'] as int),
         arguments: [artistId]);
   }
 
@@ -729,7 +736,7 @@ class _$TagDao extends TagDao {
         'SELECT * FROM UnifiedSong INNER JOIN TagSongJoin ON TagSongJoin.song_id = UnifiedSong.id WHERE TagSongJoin.tag_id IN (' +
             _sqliteVariablesForTagIds +
             ')',
-        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int, row['title'] as String, row['lengthMs'] as int),
+        mapper: (Map<String, Object?> row) => UnifiedSong(row['id'] as int?, row['title'] as String, row['lengthMs'] as int),
         arguments: [...tagIds]);
   }
 
@@ -737,7 +744,7 @@ class _$TagDao extends TagDao {
   Future<List<Tag>> getSongDirectTags(int songId) async {
     return _queryAdapter.queryList(
         'SELECT * FROM Tag INNER JOIN TagSongJoin ON TagSongJoin.tag_id = Tag.id WHERE TagSongJoin.song_id = ?1',
-        mapper: (Map<String, Object?> row) => Tag(row['id'] as int, row['name'] as String, row['hexRGBA'] as int),
+        mapper: (Map<String, Object?> row) => Tag(row['id'] as int?, row['name'] as String, row['hexRGBA'] as int),
         arguments: [songId]);
   }
 
@@ -753,6 +760,91 @@ class _$TagDao extends TagDao {
           ..database = transaction;
         return transactionDatabase.tagDao
             .getAllTaggedUnifiedSongIds(unifiedDataDao, dirDao, tagIds);
+      });
+    }
+  }
+}
+
+class _$ImporterDao extends ImporterDao {
+  _$ImporterDao(this.database, this.changeListener)
+      : _unifiedSongInsertionAdapter = InsertionAdapter(
+            database,
+            'UnifiedSong',
+            (UnifiedSong item) => <String, Object?>{
+                  'id': item.id,
+                  'title': item.title,
+                  'lengthMs': item.lengthMs
+                }),
+        _unifiedAlbumInsertionAdapter = InsertionAdapter(
+            database,
+            'UnifiedAlbum',
+            (UnifiedAlbum item) => <String, Object?>{
+                  'id': item.id,
+                  'title': item.title,
+                  'trackCount': item.trackCount,
+                  'parent_tree_node_id': item.parentTreeNodeId
+                }),
+        _unifiedAlbumEntryInsertionAdapter = InsertionAdapter(
+            database,
+            'UnifiedAlbumEntry',
+            (UnifiedAlbumEntry item) => <String, Object?>{
+                  'album_id': item.albumId,
+                  'song_id': item.songId,
+                  'index': item.index
+                }),
+        _unifiedArtistInsertionAdapter = InsertionAdapter(
+            database,
+            'UnifiedArtist',
+            (UnifiedArtist item) =>
+                <String, Object?>{'id': item.id, 'title': item.title});
+
+  final sqflite.DatabaseExecutor database;
+
+  final StreamController<String> changeListener;
+
+  final InsertionAdapter<UnifiedSong> _unifiedSongInsertionAdapter;
+
+  final InsertionAdapter<UnifiedAlbum> _unifiedAlbumInsertionAdapter;
+
+  final InsertionAdapter<UnifiedAlbumEntry> _unifiedAlbumEntryInsertionAdapter;
+
+  final InsertionAdapter<UnifiedArtist> _unifiedArtistInsertionAdapter;
+
+  @override
+  Future<List<int>> insertUnifiedSongs(List<UnifiedSong> songs) {
+    return _unifiedSongInsertionAdapter.insertListAndReturnIds(
+        songs, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<List<int>> insertUnifiedAlbums(List<UnifiedAlbum> albums) {
+    return _unifiedAlbumInsertionAdapter.insertListAndReturnIds(
+        albums, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> insertUnifiedAlbumEntries(
+      List<UnifiedAlbumEntry> albumEntries) async {
+    await _unifiedAlbumEntryInsertionAdapter.insertList(
+        albumEntries, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<List<int>> insertUnifiedArtists(List<UnifiedArtist> artists) {
+    return _unifiedArtistInsertionAdapter.insertListAndReturnIds(
+        artists, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> importData(ImportData toImport) async {
+    if (database is sqflite.Transaction) {
+      await super.importData(toImport);
+    } else {
+      await (database as sqflite.Database)
+          .transaction<void>((transaction) async {
+        final transactionDatabase = _$AppDatabase(changeListener)
+          ..database = transaction;
+        await transactionDatabase.importerDao.importData(toImport);
       });
     }
   }

@@ -13,13 +13,9 @@ class MediaModuleHub extends Module {
 
   MediaModuleHub._internal();
 
-  final List<MediaModule> modules = [
-    AndroidDeviceMedia(),
-  ];
-
   @override
   List<ModularRoute> get routes =>
-      modules.map((m) => mediaModuleRoute(m)).toList();
+      [ModuleRoute("/android", module: AndroidDeviceMedia())];
 }
 
 ModuleRoute mediaModuleHubRoute() {
@@ -29,10 +25,12 @@ ModuleRoute mediaModuleHubRoute() {
 class ModuleImportListWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final moduleList = MediaModule.knownMediaModules.values
-        .where((m) => m.canImport)
-        .sorted((a, b) => a.sortKey - b.sortKey)
-        .toIList();
+    final moduleList = ["android"];
+
+    // MediaModuleHub.modules.values
+    //     .where((m) => m.canImport)
+    //     .sorted((a, b) => a.sortKey - b.sortKey)
+    //     .toIList();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Import from...")),
@@ -43,12 +41,12 @@ class ModuleImportListWidget extends StatelessWidget {
             child: InkWell(
               onTap: () {
                 Modular.to.pushNamed(
-                    '${MediaModule.routePrefix}/${moduleList[i].mediaModuleID}/import');
+                    '${MediaModule.routePrefix}/${moduleList[i]}/import');
               },
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'Import from ${moduleList[i].humanReadableName}',
+                  'Import from ${moduleList[i]}',
                   style: TextStyle(fontSize: 18),
                   textAlign: TextAlign.center,
                 ),

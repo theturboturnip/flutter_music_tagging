@@ -38,7 +38,7 @@ import 'raw_db.dart';
 @entity
 class UnifiedSong {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
 
   final String title;
   final int lengthMs;
@@ -46,20 +46,20 @@ class UnifiedSong {
   // Used to create from SQL-version
   UnifiedSong(this.id, this.title, this.lengthMs);
   // Used to create from Dart/Flutter side
-  UnifiedSong.fromNew(this.title, this.lengthMs) : this.id = 0;
+  UnifiedSong.fromNew(this.title, this.lengthMs) : this.id = null;
 }
 
 @entity
 class UnifiedArtist {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
 
   final String title;
 
   // Used to create from SQL-version
   UnifiedArtist(this.id, this.title);
   // Used to create from Dart/Flutter side
-  UnifiedArtist.fromNew(this.title) : this.id = 0;
+  UnifiedArtist.fromNew(this.title) : this.id = null;
 }
 
 @Entity(foreignKeys: [
@@ -70,7 +70,7 @@ class UnifiedArtist {
 ])
 class UnifiedAlbum {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
 
   final String title;
   final int trackCount;
@@ -82,7 +82,7 @@ class UnifiedAlbum {
   UnifiedAlbum(this.id, this.title, this.trackCount, this.parentTreeNodeId);
   // Used to create from Dart/Flutter side
   UnifiedAlbum.fromNew(this.title, this.trackCount, this.parentTreeNodeId)
-      : this.id = 0;
+      : this.id = null;
 }
 
 @Entity(foreignKeys: [

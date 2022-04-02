@@ -14,7 +14,7 @@ import "unified_library_db.dart";
 ])
 class DirTreeNode {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
 
   // TODO - Validation that
   @ColumnInfo(name: "parent_tree_node_id")
@@ -23,7 +23,7 @@ class DirTreeNode {
   String name;
 
   DirTreeNode(this.id, this.name, this.parentTreeNodeId);
-  DirTreeNode.fromNew(this.name, this.parentTreeNodeId) : this.id = 0;
+  DirTreeNode.fromNew(this.name, this.parentTreeNodeId) : this.id = null;
 }
 
 @dao
@@ -82,13 +82,13 @@ abstract class DirDao {
   @transaction
   Future<List<UnifiedAlbum>> albumChildrenOfBfs(
       List<DirTreeNode> initialNodes) async {
-    var frontier = initialNodes.map((e) => e.id).toList();
+    var frontier = initialNodes.map((e) => e.id!).toList();
     // Add to the frontier
     for (int i = 0; i < frontier.length; i++) {
       var newElements = await dirChildrenOf(frontier[i]);
       frontier.addAll(
           // Ignore newElements that are already in the frontier
-          newElements.map((e) => e.id).where((id) => !frontier.contains(id))
+          newElements.map((e) => e.id!).where((id) => !frontier.contains(id))
           // add the rest to the frontier
           );
     }

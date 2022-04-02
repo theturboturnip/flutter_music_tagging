@@ -7,12 +7,12 @@ import 'unified_library_db.dart';
 @entity
 class Tag {
   @PrimaryKey(autoGenerate: true)
-  final int id;
+  final int? id;
   final String name;
   final int hexRGBA;
 
   Tag(this.id, this.name, this.hexRGBA);
-  Tag.fromNew(this.name, this.hexRGBA) : this.id = 0;
+  Tag.fromNew(this.name, this.hexRGBA) : this.id = null;
 }
 
 @Entity(foreignKeys: [
@@ -132,16 +132,16 @@ abstract class TagDao {
       UnifiedDataDao unifiedDataDao, DirDao dirDao, List<int> tagIds) async {
     var dirs = await getDirectlyTaggedDirs(tagIds);
     var artists = await getDirectlyTaggedArtists(tagIds);
-    var artistIds = artists.map((artist) => artist.id).toList(growable: false);
+    var artistIds = artists.map((artist) => artist.id!).toList(growable: false);
     var albums = await getDirectlyTaggedAlbums(tagIds) +
         await dirDao.albumChildrenOfBfs(dirs) +
         await unifiedDataDao.getArtistsAlbums(artistIds);
-    var albumIds = albums.map((album) => album.id).toList(growable: false);
+    var albumIds = albums.map((album) => album.id!).toList(growable: false);
     var songs = await getDirectlyTaggedSongs(tagIds) +
         await unifiedDataDao.getAlbumsSongs(albumIds) +
         await unifiedDataDao.getArtistsSongs(artistIds);
 
-    return songs.map((song) => song.id).toSet();
+    return songs.map((song) => song.id!).toSet();
   }
 
   Future<List<RawSong>> getAllTaggedRawSongIds(UnifiedDataDao unifiedDataDao,

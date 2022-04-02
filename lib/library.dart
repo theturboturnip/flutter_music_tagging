@@ -202,11 +202,11 @@ Future<IList<HierarchyChildNodeInfo>> getChildInfos(
           childDirs = await db.dirDao.dirChildrenOf(parentSqlId);
         }
         var childDirInfo = childDirs.map((dir) async => HierarchyChildNodeInfo(
-            dir.id,
+            dir.id!,
             ViewableNodeType.Directory,
             dir.name,
             "",
-            (await db.tagDao.getDirDirectTags(dir.id)).toIList()));
+            (await db.tagDao.getDirDirectTags(dir.id!)).toIList()));
 
         List<UnifiedAlbum> childAlbums;
         if (parentSqlId == null) {
@@ -214,13 +214,14 @@ Future<IList<HierarchyChildNodeInfo>> getChildInfos(
         } else {
           childAlbums = await db.dirDao.albumChildrenOf(parentSqlId);
         }
+        debugPrint(childAlbums.toString());
         var childAlbumInfo = childAlbums.map((album) async =>
             HierarchyChildNodeInfo(
-                album.id,
+                album.id!,
                 ViewableNodeType.Album,
                 album.title,
                 "",
-                (await db.tagDao.getAlbumDirectTags(album.id)).toIList()));
+                (await db.tagDao.getAlbumDirectTags(album.id!)).toIList()));
 
         var allChildInfo = await Future.wait(childDirInfo);
         allChildInfo.addAll(await Future.wait(childAlbumInfo));
@@ -234,11 +235,11 @@ Future<IList<HierarchyChildNodeInfo>> getChildInfos(
             await db.unifiedDataDao.getArtistsAlbums([parentSqlId]);
         var childAlbumInfo = childAlbums.map((album) async =>
             HierarchyChildNodeInfo(
-                album.id,
+                album.id!,
                 ViewableNodeType.Album,
                 album.title,
                 "",
-                (await db.tagDao.getAlbumDirectTags(album.id)).toIList()));
+                (await db.tagDao.getAlbumDirectTags(album.id!)).toIList()));
         return (await Future.wait(childAlbumInfo)).toIList();
       }
 
@@ -248,8 +249,8 @@ Future<IList<HierarchyChildNodeInfo>> getChildInfos(
 
         var childSongs = await db.unifiedDataDao.getAlbumSongs(parentSqlId);
         var childSongInfos = childSongs.map((song) async =>
-            HierarchyChildNodeInfo(song.id, ViewableNodeType.Song, song.title,
-                "", (await db.tagDao.getSongDirectTags(song.id)).toIList()));
+            HierarchyChildNodeInfo(song.id!, ViewableNodeType.Song, song.title,
+                "", (await db.tagDao.getSongDirectTags(song.id!)).toIList()));
         return (await Future.wait(childSongInfos)).toIList();
       }
 
